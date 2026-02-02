@@ -2,166 +2,113 @@
 
 Проект состоит из двух частей:
 
-- **Фронтенд** (Vite + TypeScript) — раздаётся через **Cloudflare Pages** (статический сайт).
-- **Бэкенд** (API + WebSocket) — работает как **Cloudflare Worker** с **Durable Object** (состояние комнат и игроков).
+- **Фронтенд** — то, что открывается в браузере (интерфейс игры). Собирается из папки `frontend/` в репозитории и раздаётся через **Cloudflare Pages**.
+- **Бэкенд** (API и WebSocket) — уже задеплоен как **Cloudflare Worker**. Его URL: `https://alias-api.wadimsergeew190405.workers.dev`.
 
-Ниже — пошаговая подготовка и деплой.
-
----
-
-## Требования
-
-- [Node.js](https://nodejs.org/) 18+
-- Аккаунт [Cloudflare](https://dash.cloudflare.com/sign-up)
-- [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/install-and-update/) (ставится через npm в проекте)
+Если вы уже залили проект на GitHub и задеплоили Worker — переходите к разделу **«Деплой фронтенда (проект на GitHub)»** ниже.
 
 ---
 
-## 1. Подготовка репозитория
+## Деплой фронтенда (проект на GitHub)
 
-Убедитесь, что в корне есть:
+Здесь мы подключаем ваш GitHub-репозиторий к Cloudflare Pages. Cloudflare будет сам собирать фронтенд из папки `frontend/` и публиковать сайт.
 
-- `frontend/` — фронтенд на Vite
-- `worker/` — Cloudflare Worker с Durable Object
+### Шаг 1. Откройте Cloudflare Dashboard
 
-Переменная окружения для фронтенда:
+1. Зайдите на [dash.cloudflare.com](https://dash.cloudflare.com) и войдите в аккаунт (тот же, в котором задеплоен Worker).
+2. В левом меню выберите **Workers & Pages**.
 
-- **`VITE_API_BASE`** — базовый URL API и WebSocket. В продакшене укажите URL вашего Worker (см. шаг 3). Если не задана, в браузере используется `http://localhost:8000` (для локальной разработки с Python-бэкендом).
+### Шаг 2. Создайте проект Pages и подключите GitHub
+
+1. Нажмите **Create** → **Pages**.
+2. Выберите **Connect to Git** (подключить репозиторий).
+3. Если GitHub ещё не подключён:
+   - Нажмите **Connect GitHub** и разрешите доступ к репозиториям (можно только выбранному репо).
+   - Выберите организацию/аккаунт и репозиторий с проектом Alias.
+4. Нажмите **Begin setup** у нужного репозитория.
+
+### Шаг 3. Настройте сборку
+
+На экране **Set up builds and deployments** укажите:
+
+| Поле | Значение |
+|------|----------|
+| **Project name** | Любое имя, например `alias-web` (по нему будет URL: `alias-web.pages.dev`). |
+| **Production branch** | Оставьте `main` (или ветку, куда вы пушите код). |
+| **Framework preset** | **None** (не Vite, не React — свой проект). |
+| **Build command** | `cd frontend && npm ci && npm run build` |
+| **Build output directory** | `frontend/dist` |
+
+Важно: команда сборки заходит в папку `frontend/`, ставит зависимости и собирает проект; результат сборки лежит в `frontend/dist`. Cloudflare будет раздавать именно эту папку как сайт.
+
+Нажмите **Save and Deploy**. Первая сборка запустится. Она может завершиться с ошибкой, если не задана переменная окружения — это исправим на следующем шаге.
+
+### Шаг 4. Добавьте переменную окружения (URL бэкенда)
+
+Фронтенду нужно знать адрес Worker (API и WebSocket). Без этого запросы уйдут не туда и игра не заработает.
+
+1. В проекте Pages откройте вкладку **Settings**.
+2. Слева выберите **Environment variables**.
+3. Нажмите **Add variable** (или **Add**).
+4. Укажите:
+   - **Variable name:** `VITE_API_BASE`
+   - **Value:** `https://alias-api.wadimsergeew190405.workers.dev`  
+     (без слеша в конце, без пробелов)
+5. Область: отметьте **Production** (и при желании **Preview**).
+6. Сохраните (**Save**).
+
+### Шаг 5. Пересоберите проект
+
+После добавления переменной нужно перезапустить сборку, чтобы она подхватила `VITE_API_BASE`:
+
+1. Откройте вкладку **Deployments**.
+2. У последнего деплоя нажмите **⋯** (три точки) → **Retry deployment** (или **Create deployment** → **Retry**).
+
+Дождитесь зелёного статуса **Success**. Над списком деплоев будет ссылка вида **https://alias-web.pages.dev** (или как вы назвали проект) — это и есть ваш сайт.
+
+### Шаг 6. Проверка
+
+1. Откройте ссылку на сайт (например `https://alias-web.pages.dev`).
+2. Создайте комнату, зайдите в неё, создайте команду и присоединитесь.
+3. Убедитесь, что игра работает: слова, раунды, очки обновляются. Откройте ту же комнату в другой вкладке или на телефоне — состояние должно совпадать (данные идут через Worker).
+
+Если что-то не работает:
+
+- В **Settings** → **Environment variables** проверьте, что `VITE_API_BASE` задан без опечаток и без слеша в конце.
+- В браузере откройте DevTools (F12) → вкладка **Network**. Обновите страницу и создайте комнату: запросы должны уходить на `https://alias-api.wadimsergeew190405.workers.dev/api/...` и `wss://alias-api.../ws`. Если запросы идут на другой адрес или падают с CORS — вернитесь к шагу 4.
 
 ---
 
-## 2. Деплой Worker (API + WebSocket)
+## Кратко: что уже есть и что вы сделали
 
-Worker обрабатывает все запросы к `/api/*` и `/ws` и хранит состояние в Durable Object.
+| Часть | Где живёт | Что вы сделали |
+|-------|-----------|----------------|
+| **Бэкенд (API + WebSocket)** | Cloudflare Worker | Уже задеплоен, URL: `https://alias-api.wadimsergeew190405.workers.dev` |
+| **Фронтенд (сайт)** | Cloudflare Pages | Подключили GitHub, настроили сборку из `frontend/`, добавили `VITE_API_BASE`, задеплоили. Сайт открывается по ссылке вида `https://<имя-проекта>.pages.dev`. |
 
-### 2.1. Установка зависимостей и вход в Cloudflare
+Дальше: пушите изменения в GitHub — Cloudflare сам пересоберёт и обновит сайт при каждом пуше в выбранную ветку (обычно `main`).
+
+---
+
+## Если Worker ещё не задеплоен
+
+Сначала задеплойте бэкенд (один раз):
 
 ```powershell
 cd worker
 npm install
 npx wrangler login
-```
-
-Появится окно браузера для входа в аккаунт Cloudflare.
-
-### 2.2. Публикация Worker
-
-```powershell
 npx wrangler deploy
 ```
 
-После успешного деплоя в консоли будет указан URL, например:
-
-```text
-https://alias-api.wadimsergeew190405.workers.dev
-```
-
-Это и есть **базовый URL API**. Он уже прописан в `frontend/.env.production` — при сборке фронтенда (`npm run build`) он подставится автоматически. При деплое через Pages в Dashboard задайте ту же переменную **VITE_API_BASE** (шаг 4).
-
-### 2.3. (Опционально) Свой домен для Worker
-
-В `worker/wrangler.toml` можно задать маршрут:
-
-```toml
-routes = [
-  { pattern = "api.yourdomain.com", zone_name = "yourdomain.com" }
-]
-```
-
-Тогда API будет доступно по `https://api.yourdomain.com`, и этот URL нужно использовать в `VITE_API_BASE`.
+В консоли появится URL Worker (например `https://alias-api.wadimsergeew190405.workers.dev`). Этот же URL укажите в переменной `VITE_API_BASE` в Pages (шаг 4 выше). Если URL у вас другой — подставьте его в **Value** при добавлении переменной.
 
 ---
 
-## 3. Деплой фронтенда на Cloudflare Pages
+## Дополнительно
 
-### Вариант A: Деплой через Git (рекомендуется)
+- **Свой домен:** в проекте Pages откройте **Custom domains**, добавьте домен и следуйте подсказкам Cloudflare.
+- **Локальная разработка:** `cd frontend && npm run dev` — фронт подключается к `http://localhost:8000` (нужен запущенный Python-бэкенд) или задайте `VITE_API_BASE` для теста против Worker.
+- **Один домен для сайта и API:** можно повесить и Pages, и Worker на один домен (разные пути). Это настраивается в Dashboard (Custom domains, Routes) — при необходимости можно расписать отдельно.
 
-1. Залить код в GitHub/GitLab.
-2. В [Cloudflare Dashboard](https://dash.cloudflare.com) → **Workers & Pages** → **Create** → **Pages** → **Connect to Git**.
-3. Выбрать репозиторий и ветку.
-4. Настроить сборку:
-   - **Framework preset:** None
-   - **Build command:** `cd frontend && npm ci && npm run build`
-   - **Build output directory:** `frontend/dist`
-5. В **Settings** → **Environment variables** добавить переменную для **Production** (и при необходимости для Preview):
-   - **Variable name:** `VITE_API_BASE`
-   - **Value:** `https://alias-api.wadimsergeew190405.workers.dev` (URL вашего Worker без завершающего слеша)
-6. Сохранить и запустить деплой. После сборки сайт будет доступен по адресу вида `https://<имя-проекта>.pages.dev`.
-
-### Вариант B: Деплой через Wrangler (папка `frontend/dist`)
-
-1. Собрать фронтенд с нужным API URL:
-
-   ```powershell
-   cd frontend
-   npm ci
-   npm run build
-   ```
-   (URL Worker уже задан в `frontend/.env.production`. Или задать вручную: `$env:VITE_API_BASE = "https://alias-api.wadimsergeew190405.workers.dev"`)
-
-2. Опубликовать содержимое `frontend/dist` в Pages:
-
-   ```powershell
-   npx wrangler pages deploy frontend/dist --project-name=alias-web
-   ```
-
-   Или через Dashboard: **Workers & Pages** → **Create** → **Pages** → **Upload assets** и загрузить архив с содержимым `frontend/dist`.
-
----
-
-## 4. Проверка после деплоя
-
-1. Откройте URL фронтенда (Pages).
-2. Создайте комнату, зайдите в неё, при необходимости создайте команду и присоединитесь.
-3. Убедитесь, что состояние обновляется (слова, раунды, очки) и что второй игрок в другой вкладке/устройстве видит те же данные (WebSocket и API идут на Worker).
-
-Если что-то не работает:
-
-- Проверьте, что в сборке фронтенда действительно задана переменная `VITE_API_BASE` с URL Worker (без слеша в конце).
-- В DevTools (Network) убедитесь, что запросы уходят на ваш Worker (`/api/rooms`, `/ws` и т.д.) и что ответы приходят без CORS-ошибок.
-
----
-
-## 5. Один домен для фронтенда и API (опционально)
-
-Если нужен один домен (например, `alias.yourdomain.com` и API по `https://alias.yourdomain.com/api`, `https://alias.yourdomain.com/ws`):
-
-1. Настройте **Pages** на свой домен (например, `alias.yourdomain.com`).
-2. Опубликуйте **Worker** на тот же домен с путями `/api/*` и `/ws` (через `routes` в `wrangler.toml` или через **Workers for Platforms** / **Custom Domains** так, чтобы Worker обрабатывал только эти пути).
-3. Соберите фронтенд с пустым `VITE_API_BASE` (или не задавайте его), чтобы запросы шли на тот же origin:
-
-   ```powershell
-   $env:VITE_API_BASE = ""
-   npm run build
-   ```
-
-Точная настройка маршрутов и привязки Worker к домену делается в Dashboard (Triggers, Routes, Custom Domains) под вашей зоной.
-
----
-
-## 6. Локальная разработка
-
-- **Фронтенд:**  
-  `cd frontend && npm run dev`  
-  По умолчанию используется `http://localhost:8000` для API/WS (если не задан `VITE_API_BASE`).
-
-- **Бэкенд (Python):**  
-  Запуск FastAPI как в README — фронтенд в dev-режиме к нему подключится.
-
-- **Worker локально:**  
-  `cd worker && npx wrangler dev`  
-  В другом терминале во фронтенде задайте `VITE_API_BASE=http://localhost:8787` и запустите `npm run dev`, чтобы тестировать фронт против Worker.
-
----
-
-## Краткий чеклист
-
-- [ ] Установлены зависимости в `frontend/` и `worker/`
-- [ ] Выполнен `wrangler login` и `wrangler deploy` в `worker/`
-- [ ] Worker задеплоен, URL: `https://alias-api.wadimsergeew190405.workers.dev`
-- [ ] В Pages задана переменная `VITE_API_BASE` = этот URL (или в `frontend/.env.production` уже прописан)
-- [ ] Сборка фронтенда: `cd frontend && npm run build` (с нужным `VITE_API_BASE`)
-- [ ] Деплой фронтенда на Pages (Git или загрузка `frontend/dist`)
-- [ ] Проверка создания комнаты и игры через задеплоенный фронт и Worker
-
-После этого проект полностью работает на Cloudflare Pages и Workers.
+После выполнения шагов 1–6 проект полностью работает: фронт на Pages, бэкенд на Worker, репозиторий на GitHub.
