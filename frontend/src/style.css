@@ -56,3 +56,12 @@ body {
   filter: saturate(1.25) brightness(1.05);
   box-shadow: 0 0 22px rgba(239, 68, 68, 0.35);
 }
+
+/* Выпадающие списки: тёмный текст на светлом фоне, чтобы пункты были читаемы */
+select {
+  color: #0f172a;
+}
+select option {
+  background: #fff;
+  color: #0f172a;
+}
