@@ -77,6 +77,7 @@ type WsView = {
 type WsState = { type: 'state'; view: WsView }
 type WsError = { type: 'error'; message: string }
 type WsPlayerLeft = { type: 'player_left'; player_name: string }
+type WsLeft = { type: 'left' }
 
 // В продакшене на Cloudflare: пустая строка = тот же origin (Worker на том же домене).
 // Локально: не задано = localhost:8000. Или задать VITE_API_BASE при сборке.
@@ -1018,7 +1019,7 @@ async function connectWs(force: boolean) {
   }
   ws.onmessage = (ev) => {
     try {
-      const data = JSON.parse(ev.data) as WsState | WsError | WsPlayerLeft
+      const data = JSON.parse(ev.data) as WsState | WsError | WsPlayerLeft | WsLeft
       if (data.type === 'state') {
         store.view = data.view
         if (store.settingsDraft && configKey(store.settingsDraft) === configKey(data.view.room.config)) store.settingsDirty = false
@@ -1026,11 +1027,14 @@ async function connectWs(force: boolean) {
         render()
       } else if (data.type === 'player_left') {
         showToastLeave(`${escapeHtml(data.player_name)} покинул комнату`)
+      } else if ((data as WsLeft).type === 'left') {
+        leaveRoomToLobby()
       } else {
+        const err = data as WsError
         const msg =
-          data.message === 'cannot_change_word_pack_after_game_started'
+          err.message === 'cannot_change_word_pack_after_game_started'
             ? 'Пак слов нельзя менять после начала первого раунда до конца игры'
-            : data.message
+            : err.message
         setError('rightError', msg)
       }
     } catch {
@@ -1309,7 +1313,13 @@ function wireHandlers() {
   ;(document.getElementById('createRoom') as HTMLButtonElement | null)?.addEventListener('click', () => void createRoom())
   ;(document.getElementById('loadRoom') as HTMLButtonElement | null)?.addEventListener('click', () => void loadRoomInfo())
   ;(document.getElementById('enterRoom') as HTMLButtonElement | null)?.addEventListener('click', () => void ensureJoinedSpectator(store.roomCode))
-  ;(document.getElementById('leaveRoom') as HTMLButtonElement | null)?.addEventListener('click', () => leaveRoomToLobby())
+  ;(document.getElementById('leaveRoom') as HTMLButtonElement | null)?.addEventListener('click', () => {
+    if (store.ws?.readyState === WebSocket.OPEN) {
+      sendWs({ type: 'leave_room' })
+    } else {
+      leaveRoomToLobby()
+    }
+  })
   ;(document.getElementById('reconnectBtn') as HTMLButtonElement | null)?.addEventListener('click', () => {
     if (store.playerId) {
       store.reconnectAttempt = 0

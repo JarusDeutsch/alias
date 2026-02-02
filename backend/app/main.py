@@ -410,6 +410,30 @@ async def ws_endpoint(ws: WebSocket) -> None:
                         outcome=action.outcome,
                     )
                     await connections.broadcast_room(player.room_id)
+                elif msg_type == "leave_room":
+                    player = store.state.players.get(player_id)
+                    if player:
+                        room_id = player.room_id
+                        player_name = player.name
+                        try:
+                            await connections.broadcast_player_left(room_id, player_name, exclude_player_id=player_id)
+                        except Exception:
+                            pass
+                        store.remove_player(player_id)
+                        connections.disconnect(player_id)
+                        try:
+                            await connections.broadcast_room(room_id)
+                        except Exception:
+                            pass
+                        if room_id is not None:
+                            still = [
+                                pid for pid, p in store.state.players.items()
+                                if p.room_id == room_id and pid in connections._by_player
+                            ]
+                            if not still:
+                                store.remove_room_custom_words(room_id)
+                    await ws.send_json({"type": "left"})
+                    return
                 else:
                     await connections.send_error(ws, "unknown_message_type")
             except Exception as e:  # noqa: BLE001
