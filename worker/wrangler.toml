@@ -1,0 +1,16 @@
+name = "alias-api"
+main = "src/index.ts"
+compatibility_date = "2024-11-01"
+
+# Durable Object для хранения состояния игры и WebSocket-сессий
+durable_objects = { bindings = [{ name = "ALIAS_STATE", class_name = "AliasState" }] }
+
+# Один глобальный экземпляр DO для всего состояния (rooms, teams, players, ws).
+# На бесплатном плане Cloudflare нужна миграция new_sqlite_classes (SQLite-backed DO).
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["AliasState"]
+
+# Для продакшена: раскомментировать и задать домен/зону
+# routes = [{ pattern = "api.yourdomain.com", zone_name = "yourdomain.com" }]
+# Или использовать workers.dev: после deploy будет https://alias-api.<account>.workers.dev
