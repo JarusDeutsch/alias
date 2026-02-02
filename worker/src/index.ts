@@ -22,6 +22,8 @@ export default {
       const id = env.ALIAS_STATE.idFromName(DO_ID)
       const stub = env.ALIAS_STATE.get(id)
       const res = await stub.fetch(request)
+      // Ответ 101 с WebSocket нельзя оборачивать — иначе теряется соединение.
+      if (res.status === 101) return res
       return addCorsHeaders(res, request)
     }
 

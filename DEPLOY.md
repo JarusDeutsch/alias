@@ -82,6 +82,8 @@
 - В **Settings** → **Environment variables** проверьте, что `VITE_API_BASE` задан без опечаток и без слеша в конце.
 - В браузере откройте DevTools (F12) → вкладка **Network**. Обновите страницу и создайте комнату: запросы должны уходить на `https://alias-api.wadimsergeew190405.workers.dev/api/...` и `wss://alias-api.../ws`. Если запросы идут на другой адрес или падают с CORS — вернитесь к шагу 4.
 
+**Ошибка «root directory not found»:** в поле **Root directory** указано `frontend/dist`. Нужна папка с исходниками, а не со сборкой: укажите **`frontend`** (без `/dist`). Папка `dist` создаётся при сборке. Если есть поле **Build output directory** — укажите там **`dist`**.
+
 **Ошибка «Missing entry-point to Worker script» при сборке Pages:** в поле **Deploy command** указано `npx wrangler deploy`. Замените на **`true`** (без кавычек) или очистите поле, если оно не обязательное. Сохраните и сделайте **Retry deployment**.
 
 **На Worker (alias-api….workers.dev) открываю в браузере — «Not Found»:** это нормально. Worker обрабатывает только пути `/api/*` и `/ws`. Главная страница (`/`) не отдаётся — на ней 404. Фронтенд должен обращаться к этому URL за API и WebSocket (переменная `VITE_API_BASE`), а не открывать его как сайт в браузере.

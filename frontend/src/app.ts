@@ -222,7 +222,7 @@ async function fetchJson<T>(url: string, init: RequestInit, timeoutMs = 6000): P
 }
 
 function card(inner: string, cls = '') {
-  return `<div class="rounded-3xl bg-white/5 p-9 ring-1 ring-white/10 backdrop-blur ${cls}">${inner}</div>`
+  return `<div class="rounded-2xl bg-white/5 p-6 ring-1 ring-white/10 backdrop-blur ${cls}">${inner}</div>`
 }
 
 async function copyToClipboard(text: string): Promise<boolean> {
@@ -362,7 +362,7 @@ function render() {
   const spectatorsPanel = view
       ? (() => {
           const spectators = view.room.spectators ?? []
-          return `<div class="rounded-2xl bg-white/5 p-4 ring-1 ring-white/10 min-w-[180px]">
+          return `<div class="rounded-xl bg-white/5 p-3 ring-1 ring-white/10 min-w-[160px]">
             <div class="text-base text-slate-400">Игроки без команды</div>
             <div class="mt-2 flex flex-wrap gap-2">
               ${spectators.length ? spectators.map((n) => `<span class="rounded-full bg-white/10 px-2 py-1 text-base text-slate-200 ring-1 ring-white/10">${escapeHtml(n)}</span>`).join('') : '<span class="text-base text-slate-500">пока никого</span>'}
@@ -378,12 +378,12 @@ function render() {
   const header = `
     <div class="flex items-center justify-between gap-3">
       <div>
-        <div class="inline-flex items-center gap-2 rounded-full bg-white/5 px-3 py-1 text-base text-slate-200 ring-1 ring-white/10">
+        <div class="inline-flex items-center gap-1.5 rounded-full bg-white/5 px-2.5 py-0.5 text-sm text-slate-200 ring-1 ring-white/10">
           <span class="h-2 w-2 rounded-full ${connected ? 'bg-emerald-400' : connecting ? 'bg-sky-400' : 'bg-amber-400'}"></span>
           <span>${connected ? 'Подключено' : connecting ? 'Подключаемся…' : 'Не подключено'}</span>
           ${reconnectBtn}
         </div>
-        <h1 class="mt-3 text-4xl font-semibold tracking-tight">Alias Web</h1>
+        <h1 class="mt-2 text-3xl font-semibold tracking-tight">Alias Web</h1>
         <p class="mt-1 text-base text-slate-300">${escapeHtml(tagline)}</p>
       </div>
       ${spectatorsPanel}
@@ -397,10 +397,10 @@ function render() {
   const wordsUploadEl =
     view && store.playerRoomCode
       ? `
-    <div class="fixed bottom-6 right-6 z-40">
+    <div class="fixed bottom-4 right-4 z-40">
       <input type="file" id="wordsCsvInput" accept=".csv" class="hidden" />
       <button type="button" id="uploadWordsBtn" title="${!canChangeWordPackBtn ? 'Пак слов нельзя менять после начала первого раунда до конца игры' : view.room.custom_words_name ? 'Пак слов загружен' : 'Загрузить пак слов из CSV для этой комнаты'}"
-        class="rounded-2xl bg-white/10 px-4 py-2.5 text-base font-medium text-slate-200 ring-1 ring-white/10 hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-indigo-500/60 disabled:opacity-50 disabled:cursor-not-allowed"
+        class="rounded-xl bg-white/10 px-3 py-2 text-sm font-medium text-slate-200 ring-1 ring-white/10 hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-indigo-500/60 disabled:opacity-50 disabled:cursor-not-allowed"
         ${canChangeWordPackBtn ? '' : 'disabled'}>
         ${escapeHtml(view.room.custom_words_name ?? 'Загрузить пак слов')}
       </button>
@@ -409,13 +409,13 @@ function render() {
 
   appEl.innerHTML = `
     <div class="alias-page-bg min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-slate-100">
-      <div class="relative z-10 mx-auto max-w-[1728px] px-6 py-12">
+      <div class="relative z-10 mx-auto max-w-[1520px] px-4 py-8">
         ${header}
         ${body}
 
       </div>
     </div>
-    <div id="aliasToast" class="pointer-events-none fixed bottom-6 left-1/2 z-50 hidden -translate-x-1/2 rounded-2xl bg-slate-950/80 px-4 py-2 text-base text-white ring-1 ring-white/10 backdrop-blur">
+    <div id="aliasToast" class="pointer-events-none fixed bottom-4 left-1/2 z-50 hidden -translate-x-1/2 rounded-xl bg-slate-950/80 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 backdrop-blur">
       toast
     </div>
     ${wordsUploadEl}
@@ -426,7 +426,7 @@ function render() {
 
 function renderLobbyLayout() {
   return `
-    <div class="mt-12 grid gap-10 lg:grid-cols-2">
+    <div class="mt-8 grid gap-8 lg:grid-cols-2">
       ${card(renderLobbyCard())}
       ${card(renderHelpCard())}
     </div>
@@ -435,27 +435,27 @@ function renderLobbyLayout() {
 
 function renderLobbyCard() {
   return `
-    <h2 class="text-xl font-semibold">Лобби</h2>
+    <h2 class="text-lg font-semibold">Лобби</h2>
     <p class="mt-1 text-base text-slate-300">Выберите ник и создайте комнату или войдите по номеру</p>
 
     <div class="mt-5 grid gap-3">
       <label class="grid gap-1">
         <span class="text-base text-slate-300">Ваше имя</span>
         <input id="playerName" value="${escapeHtml(store.playerName)}" placeholder="Например, Даша" maxlength="${PLAYER_NAME_MAX_LEN}"
-          class="rounded-xl bg-white/5 px-3 py-2 text-base ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500/60" />
+          class="rounded-lg bg-white/5 px-2.5 py-1.5 text-sm ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500/60" />
       </label>
 
       <label class="grid gap-1">
         <span class="text-base text-slate-300">Номер (код) комнаты</span>
         <input id="roomCode" value="${escapeHtml(store.roomCode)}" placeholder="Например, 8K3QZP" maxlength="${ROOM_CODE_MAX_LEN}"
-          class="rounded-xl bg-white/5 px-3 py-2 text-base uppercase tracking-widest ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500/60" />
+          class="rounded-lg bg-white/5 px-2.5 py-1.5 text-sm uppercase tracking-widest ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500/60" />
       </label>
 
       <div class="mt-1 grid gap-2 sm:grid-cols-2">
-        <button id="createRoom" class="rounded-xl bg-indigo-500 px-4 py-2 text-base font-semibold text-white hover:bg-indigo-400">
+        <button id="createRoom" class="rounded-xl bg-indigo-500 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-400">
           Создать комнату
         </button>
-        <button id="enterRoom" class="rounded-xl bg-emerald-500 px-4 py-2 text-base font-semibold text-emerald-950 hover:bg-emerald-400 disabled:opacity-50" ${store.roomCode.trim() ? '' : 'disabled'}>
+        <button id="enterRoom" class="rounded-xl bg-emerald-500 px-3 py-1.5 text-sm font-semibold text-emerald-950 hover:bg-emerald-400 disabled:opacity-50" ${store.roomCode.trim() ? '' : 'disabled'}>
           Войти по коду
         </button>
       </div>
@@ -482,7 +482,7 @@ function renderLobbyCard() {
 
 function renderHelpCard() {
   return `
-    <h2 class="text-xl font-semibold">Правила игры</h2>
+    <h2 class="text-lg font-semibold">Правила игры</h2>
     <ul class="mt-4 grid gap-2 text-base text-slate-300">
       <li class="rounded-xl bg-white/5 px-3 py-2 ring-1 ring-white/10">
         <span class="font-semibold text-slate-100">Роли.</span> В команде — загадывающий и угадывающие.<br>
@@ -509,14 +509,14 @@ function renderGlobalTimer(view: WsView) {
   const active = ms !== null
   // скрываем по умолчанию, JS будет обновлять и показывать во время раунда
   return `
-    <div id="globalTimerWrap" class="${active ? '' : 'hidden '}mt-10">
-      <div class="-mx-5">
-        <div class="alias-timer-bar-outer h-2 w-full overflow-hidden">
+    <div id="globalTimerWrap" class="${active ? '' : 'hidden '}mt-6">
+      <div class="-mx-3">
+        <div class="alias-timer-bar-outer h-1.5 w-full overflow-hidden">
           <div id="globalTimerBarInner" class="alias-timer-bar-inner h-full"></div>
         </div>
       </div>
-      <div class="mt-5 text-center">
-        <div id="globalTimerDigits" class="alias-timer-digits text-6xl font-semibold text-white sm:text-7xl">${active ? formatMmSs(Math.ceil((ms ?? 0) / 1000)) : ''}</div>
+      <div class="mt-3 text-center">
+        <div id="globalTimerDigits" class="alias-timer-digits text-5xl font-semibold text-white sm:text-6xl">${active ? formatMmSs(Math.ceil((ms ?? 0) / 1000)) : ''}</div>
       </div>
     </div>
   `
@@ -524,13 +524,13 @@ function renderGlobalTimer(view: WsView) {
 
 function renderGameLayout(view: WsView) {
   const top = renderTopBar(view)
-  const left = card(renderMyTeamPanel(view), 'h-fit lg:w-[330px] lg:justify-self-end')
-  const center = card(renderCenterPanel(view), 'min-h-[630px] w-full lg:justify-self-center')
-  const right = card(renderRightPanel(view), 'h-fit lg:w-[510px] lg:justify-self-start')
+  const left = card(renderMyTeamPanel(view), 'h-fit lg:w-[280px] lg:justify-self-end')
+  const center = card(renderCenterPanel(view), 'min-h-[540px] w-full lg:justify-self-center')
+  const right = card(renderRightPanel(view), 'h-fit lg:w-[440px] lg:justify-self-start')
   return `
     ${renderGlobalTimer(view)}
     ${top}
-    <div class="mt-8 grid gap-9 lg:grid-cols-[1fr_minmax(0,1080px)_1fr]">
+    <div class="mt-6 grid gap-6 lg:grid-cols-[1fr_minmax(0,960px)_1fr]">
       ${left}
       ${center}
       ${right}
@@ -542,7 +542,7 @@ function renderTopBar(view: WsView) {
   const teams = view.room.teams
     .map((t) => {
       const winner = view.room.winner_team_id === t.id
-      return `<div class="flex items-center gap-2 rounded-2xl bg-white/5 px-3 py-2 ring-1 ring-white/10">
+      return `<div class="flex items-center gap-2 rounded-xl bg-white/5 px-2.5 py-1.5 ring-1 ring-white/10">
         <div class="min-w-0">
           <div class="truncate text-base font-medium text-slate-100">${escapeHtml(t.name)}</div>
           <div class="text-base text-slate-400">раунд ${t.round_number}${t.round_active ? ' (идёт)' : ''}</div>

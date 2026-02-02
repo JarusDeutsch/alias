@@ -32,48 +32,51 @@ export class AliasState implements DurableObject {
     return new Response('Not Found', { status: 404 })
   }
 
-  private async handleWebSocket(request: Request): Promise<Response> {
-    const client = (request as Request & { webSocket?: WebSocket }).webSocket
-    if (!client) return new Response('Expected WebSocket', { status: 400 })
-    this.ctx.acceptWebSocket(client)
-    return new Response(null, { status: 101, webSocket: client })
-  }
+  private async handleWebSocket(_request: Request): Promise<Response> {
+    // WebSocketPair: DO создаёт пару, возвращает client браузеру, server остаётся в DO.
+    // Так работает при пересылке запроса через stub.fetch() — request.webSocket не передаётся.
+    const pair = new WebSocketPair()
+    const [client, server] = Object.values(pair)
+    server.accept()
 
-  webSocketMessage(ws: WebSocket, message: string | ArrayBuffer): void {
-    try {
-      const data = JSON.parse(message as string)
-      if (data.type === 'hello') {
-        const playerId = String(data.player_id ?? '')
-        if (!this.state.players[playerId]) {
-          this.sendError(ws, 'unknown_player_id')
-          ws.close(1008)
+    server.addEventListener('message', (event: MessageEvent<string | ArrayBuffer>) => {
+      try {
+        const data = JSON.parse(String(event.data))
+        if (data.type === 'hello') {
+          const playerId = String(data.player_id ?? '')
+          if (!this.state.players[playerId]) {
+            this.sendError(server, 'unknown_player_id')
+            server.close(1008)
+            return
+          }
+          this.connections.set(playerId, server)
+          this.sendState(playerId)
           return
         }
-        this.connections.set(playerId, ws)
-        this.sendState(playerId)
-        return
+        const playerId = this.getPlayerIdForWs(server)
+        if (!playerId) return
+        this.handleWsAction(playerId, data, server)
+      } catch {
+        // ignore
       }
-      const playerId = this.getPlayerIdForWs(ws)
-      if (!playerId) return
-      this.handleWsAction(playerId, data, ws)
-    } catch {
-      // ignore
-    }
-  }
+    })
 
-  webSocketClose(ws: WebSocket): void {
-    const playerId = this.getPlayerIdForWs(ws)
-    if (playerId) {
-      this.connections.delete(playerId)
-      const player = this.state.players[playerId]
-      const roomId = player?.room_id
-      if (roomId) {
-        const stillConnected = [...this.connections.keys()].filter(
-          pid => this.state.players[pid]?.room_id === roomId
-        )
-        if (stillConnected.length === 0) this.roomCustomWords.delete(roomId)
+    server.addEventListener('close', () => {
+      const playerId = this.getPlayerIdForWs(server)
+      if (playerId) {
+        this.connections.delete(playerId)
+        const player = this.state.players[playerId]
+        const roomId = player?.room_id
+        if (roomId) {
+          const stillConnected = [...this.connections.keys()].filter(
+            pid => this.state.players[pid]?.room_id === roomId
+          )
+          if (stillConnected.length === 0) this.roomCustomWords.delete(roomId)
+        }
       }
-    }
+    })
+
+    return new Response(null, { status: 101, webSocket: client })
   }
 
   private getPlayerIdForWs(ws: WebSocket): string | null {
