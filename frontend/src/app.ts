@@ -76,6 +76,7 @@ type WsView = {
 
 type WsState = { type: 'state'; view: WsView }
 type WsError = { type: 'error'; message: string }
+type WsPlayerLeft = { type: 'player_left'; player_name: string }
 
 // В продакшене на Cloudflare: пустая строка = тот же origin (Worker на том же домене).
 // Локально: не задано = localhost:8000. Или задать VITE_API_BASE при сборке.
@@ -106,6 +107,7 @@ const TAGLINES = [
 const tagline = TAGLINES[Math.floor(Math.random() * TAGLINES.length)]
 
 let toastHideTimer: number | null = null
+let toastLeaveHideTimer: number | null = null
 
 const store = {
   roomCode: localStorage.getItem('alias_room_code') ?? '',
@@ -134,6 +136,18 @@ function showToast(message: string) {
   el.classList.remove('hidden')
   if (toastHideTimer) window.clearTimeout(toastHideTimer)
   toastHideTimer = window.setTimeout(() => {
+    el.classList.add('hidden')
+    el.textContent = ''
+  }, 1500)
+}
+
+function showToastLeave(message: string) {
+  const el = document.getElementById('aliasToastLeave')
+  if (!el) return
+  el.textContent = message
+  el.classList.remove('hidden')
+  if (toastLeaveHideTimer) window.clearTimeout(toastLeaveHideTimer)
+  toastLeaveHideTimer = window.setTimeout(() => {
     el.classList.add('hidden')
     el.textContent = ''
   }, 1500)
@@ -418,6 +432,9 @@ function render() {
     <div id="aliasToast" class="pointer-events-none fixed bottom-4 left-1/2 z-50 hidden -translate-x-1/2 rounded-xl bg-slate-950/80 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 backdrop-blur">
       toast
     </div>
+    <div id="aliasToastLeave" class="pointer-events-none fixed bottom-4 left-1/2 z-50 hidden -translate-x-1/2 rounded-xl bg-rose-600/95 px-3 py-1.5 text-sm text-white ring-1 ring-rose-400/30 backdrop-blur">
+      leave
+    </div>
     ${wordsUploadEl}
   `
 
@@ -452,10 +469,10 @@ function renderLobbyCard() {
       </label>
 
       <div class="mt-1 grid gap-2 sm:grid-cols-2">
-        <button id="createRoom" class="rounded-xl bg-indigo-500 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-400">
+        <button id="createRoom" class="min-w-[10.5rem] rounded-xl bg-indigo-500 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-400">
           Создать комнату
         </button>
-        <button id="enterRoom" class="rounded-xl bg-emerald-500 px-3 py-1.5 text-sm font-semibold text-emerald-950 hover:bg-emerald-400 disabled:opacity-50" ${store.roomCode.trim() ? '' : 'disabled'}>
+        <button id="enterRoom" class="min-w-[10.5rem] rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-950 hover:bg-emerald-400 disabled:opacity-50" ${store.roomCode.trim() ? '' : 'disabled'}>
           Войти по коду
         </button>
       </div>
@@ -1015,12 +1032,14 @@ async function connectWs(force: boolean) {
   }
   ws.onmessage = (ev) => {
     try {
-      const data = JSON.parse(ev.data) as WsState | WsError
+      const data = JSON.parse(ev.data) as WsState | WsError | WsPlayerLeft
       if (data.type === 'state') {
         store.view = data.view
         if (store.settingsDraft && configKey(store.settingsDraft) === configKey(data.view.room.config)) store.settingsDirty = false
         if (!store.settingsDirty) store.settingsDraft = data.view.room.config
         render()
+      } else if (data.type === 'player_left') {
+        showToastLeave(`${escapeHtml(data.player_name)} покинул комнату`)
       } else {
         const msg =
           data.message === 'cannot_change_word_pack_after_game_started'

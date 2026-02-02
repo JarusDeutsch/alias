@@ -133,6 +133,17 @@ class StateStore:
                 team.cluegiver_id = None
         player.team_id = None
 
+    def remove_player(self, player_id: UUID) -> Optional[Tuple[UUID, str]]:
+        """Удалить игрока из комнаты (из команды и из state). Возвращает (room_id, name) для уведомления остальных."""
+        player = self.state.players.get(player_id)
+        if not player:
+            return None
+        room_id = player.room_id
+        name = player.name
+        self._remove_player_from_team(player_id)
+        del self.state.players[player_id]
+        return (room_id, name)
+
     def join_team(self, player_id: UUID, team_id: UUID, role: PlayerRole = PlayerRole.guesser) -> None:
         if role == PlayerRole.spectator:
             raise ValueError("invalid_role")

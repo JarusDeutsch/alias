@@ -155,6 +155,13 @@ class Connections:
             if player.room_id == room_id and pid in self._by_player:
                 await self.send_state(pid)
 
+    async def broadcast_player_left(self, room_id: UUID, player_name: str, exclude_player_id: Optional[UUID] = None) -> None:
+        msg = {"type": "player_left", "player_name": player_name}
+        for pid, player in list(store.state.players.items()):
+            if pid != exclude_player_id and player.room_id == room_id and pid in self._by_player:
+                ws = self._by_player[pid]
+                await ws.send_json(msg)
+
     async def send_error(self, ws: WebSocket, message: str) -> None:
         await ws.send_json(WsServerError(message=message).model_dump())
 
@@ -414,8 +421,14 @@ async def ws_endpoint(ws: WebSocket) -> None:
         if player_id is not None:
             player = store.state.players.get(player_id)
             room_id = player.room_id if player else None
+            player_name = player.name if player else None
+            if room_id is not None and player_name is not None:
+                await connections.broadcast_player_left(room_id, player_name, exclude_player_id=player_id)
+            removed = store.remove_player(player_id)
             connections.disconnect(player_id)
-            # When no one left in room (no connected players), drop custom word pack
+            if removed is not None:
+                r_id, _ = removed
+                await connections.broadcast_room(r_id)
             if room_id is not None:
                 still_connected = [
                     pid for pid, p in store.state.players.items()

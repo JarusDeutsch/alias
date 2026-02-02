@@ -57,11 +57,12 @@ body {
   box-shadow: 0 0 22px rgba(239, 68, 68, 0.35);
 }
 
-/* Выпадающие списки: тёмный текст на светлом фоне, чтобы пункты были читаемы */
+/* Выпадающие списки в стиле проекта: светлый текст на тёмном фоне */
 select {
-  color: #0f172a;
+  color: #e2e8f0;
+  background-color: rgba(255, 255, 255, 0.05);
 }
 select option {
-  background: #fff;
-  color: #0f172a;
+  background: #1e293b;
+  color: #e2e8f0;
 }
