@@ -35,11 +35,16 @@
 |------|----------|
 | **Project name** | Любое имя, например `alias-web` (по нему будет URL: `alias-web.pages.dev`). |
 | **Production branch** | Оставьте `main` (или ветку, куда вы пушите код). |
+| **Root directory** | Оставьте **`/`** (корень репозитория). |
 | **Framework preset** | **None** (не Vite, не React — свой проект). |
 | **Build command** | `cd frontend && npm ci && npm run build` |
-| **Build output directory** | `frontend/dist` |
+| **Deploy command** (если поле обязательное) | `true` |
 
-Важно: команда сборки заходит в папку `frontend/`, ставит зависимости и собирает проект; результат сборки лежит в `frontend/dist`. Cloudflare будет раздавать именно эту папку как сайт.
+**Обязательно** найдите и заполните поле с путём к результату сборки — иначе на сайте будет «Hello world» или пустая страница. Оно может называться **Build output directory**, **Output directory**, **Publish directory** или **Build directory**. Укажите там **`frontend/dist`** (путь от корня репозитория к папке со сборкой). Обычно оно в **Settings** → **Builds & deployments** (иногда внутри блока **Build configuration** или **Build settings**).
+
+**Команда деплоя (Deploy command):** если поле обязательное (Required), укажите **`true`** (без кавычек). Worker деплоится отдельно с вашего компьютера из папки `worker/`; Pages сам загружает результат сборки как сайт.
+
+Важно: при **Root directory** = `/` сборка идёт из корня репозитория, поэтому в Build command сначала заходим в `frontend` (`cd frontend`), затем ставим зависимости и собираем. Результат — папка `frontend/dist`.
 
 Нажмите **Save and Deploy**. Первая сборка запустится. Она может завершиться с ошибкой, если не задана переменная окружения — это исправим на следующем шаге.
 
@@ -76,6 +81,14 @@
 
 - В **Settings** → **Environment variables** проверьте, что `VITE_API_BASE` задан без опечаток и без слеша в конце.
 - В браузере откройте DevTools (F12) → вкладка **Network**. Обновите страницу и создайте комнату: запросы должны уходить на `https://alias-api.wadimsergeew190405.workers.dev/api/...` и `wss://alias-api.../ws`. Если запросы идут на другой адрес или падают с CORS — вернитесь к шагу 4.
+
+**Ошибка «Missing entry-point to Worker script» при сборке Pages:** в поле **Deploy command** указано `npx wrangler deploy`. Замените на **`true`** (без кавычек) или очистите поле, если оно не обязательное. Сохраните и сделайте **Retry deployment**.
+
+**На Worker (alias-api….workers.dev) открываю в браузере — «Not Found»:** это нормально. Worker обрабатывает только пути `/api/*` и `/ws`. Главная страница (`/`) не отдаётся — на ней 404. Фронтенд должен обращаться к этому URL за API и WebSocket (переменная `VITE_API_BASE`), а не открывать его как сайт в браузере.
+
+**На сайте показывается «Hello world»:** Pages публикует не папку со сборкой, а корень репозитория или заглушку. Что сделать:
+1. **Settings** → **Builds & deployments** → найдите поле **Build output directory** (или **Output directory**, **Publish directory**, **Build directory**) и укажите **`frontend/dist`**. Сохраните и сделайте **Retry deployment**.
+2. Если такого поля нет: попробуйте **Framework preset** = **Vite**, **Root directory** = **`frontend`**, **Build command** = **`npm ci && npm run build`**. У пресета Vite обычно подставляется вывод в `dist`; тогда сайт будет браться из `frontend/dist`. Сохраните и пересоберите проект.
 
 ---
 
