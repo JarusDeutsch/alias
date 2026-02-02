@@ -421,7 +421,7 @@ function render() {
     </div>`
       : ''
 
-  appEl.innerHTML = `
+  const mainContent = `
     <div class="alias-page-bg min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-slate-100">
       <div class="relative z-10 mx-auto max-w-[1520px] px-4 py-8">
         ${header}
@@ -429,15 +429,19 @@ function render() {
 
       </div>
     </div>
-    <div id="aliasToast" class="pointer-events-none fixed bottom-4 left-1/2 z-50 hidden -translate-x-1/2 rounded-xl bg-slate-950/80 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 backdrop-blur">
-      toast
-    </div>
-    <div id="aliasToastLeave" class="pointer-events-none fixed bottom-4 left-1/2 z-50 hidden -translate-x-1/2 rounded-xl bg-rose-600/95 px-3 py-1.5 text-sm text-white ring-1 ring-rose-400/30 backdrop-blur">
-      leave
-    </div>
     ${wordsUploadEl}
   `
 
+  let mainEl = document.getElementById('aliasMain')
+  if (!mainEl) {
+    appEl.innerHTML = `
+    <div id="aliasMain"></div>
+    <div id="aliasToast" class="pointer-events-none fixed bottom-4 left-1/2 z-50 hidden -translate-x-1/2 rounded-xl bg-slate-950/80 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 backdrop-blur">toast</div>
+    <div id="aliasToastLeave" class="pointer-events-none fixed bottom-4 left-1/2 z-50 hidden -translate-x-1/2 rounded-xl bg-rose-600/95 px-3 py-1.5 text-sm text-white ring-1 ring-rose-400/30 backdrop-blur">leave</div>
+    `
+    mainEl = document.getElementById('aliasMain')!
+  }
+  mainEl.innerHTML = mainContent
   wireHandlers()
 }
 
@@ -800,7 +804,6 @@ function renderCenterPanel(view: WsView) {
 function renderRightPanel(view: WsView) {
   const canSettings = canEditSettings(view)
   const cfg = store.settingsDraft ?? view.room.config
-  const dirty = store.settingsDraft ? configKey(store.settingsDraft) !== configKey(view.room.config) : false
   const team = view.my_team
   const remain = remainingSeconds(team ?? null)
   const gameStarted = (view.room.teams ?? []).some((t) => t.round_number > 0) && !view.room.game_over
@@ -856,29 +859,12 @@ function renderRightPanel(view: WsView) {
 
         <label class="grid gap-1">
           <span class="text-base text-slate-300">Тип победы</span>
-          <div class="flex items-center gap-2">
-            <select id="cfgMode" class="min-w-0 flex-1 rounded-xl bg-white/5 px-3 py-2 text-base ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500/60" ${
+          <select id="cfgMode" class="rounded-xl bg-white/5 px-3 py-2 text-base ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500/60" ${
               canSettings ? '' : 'disabled'
             }>
               <option value="to_words" ${cfg.mode === 'to_words' ? 'selected' : ''}>По количеству угаданных слов</option>
               <option value="to_rounds" ${cfg.mode === 'to_rounds' ? 'selected' : ''}>По количеству раундов</option>
             </select>
-            <button
-              id="applySettingsBtn"
-              type="button"
-              title="${dirty ? 'Применить настройки' : 'Настройки применены'}"
-              class="inline-flex h-9 w-9 items-center justify-center rounded-xl ring-1 transition-colors disabled:opacity-40 ${
-                dirty
-                  ? 'bg-amber-400/15 text-amber-200 ring-amber-400/30 hover:bg-amber-400/20'
-                  : 'bg-emerald-400/15 text-emerald-200 ring-emerald-400/25'
-              }"
-              ${canSettings && dirty ? '' : 'disabled'}
-            >
-              <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M20 6L9 17l-5-5" />
-              </svg>
-            </button>
-          </div>
         </label>
 
         <div class="grid gap-3 sm:grid-cols-2">
@@ -1421,15 +1407,18 @@ function wireHandlers() {
   const roundSecEl = document.getElementById('cfgRoundSec') as HTMLInputElement | null
   const targetEl = document.getElementById('cfgTarget') as HTMLInputElement | null
   const wordPackEl = document.getElementById('cfgWordPack') as HTMLSelectElement | null
-  const applyBtn = document.getElementById('applySettingsBtn') as HTMLButtonElement | null
 
-  modeEl?.addEventListener('change', updateDraftFromUi)
+  function syncDraftAndApply() {
+    updateDraftFromUi()
+    applyDraftSettings()
+  }
+
+  modeEl?.addEventListener('change', syncDraftAndApply)
+  wordPackEl?.addEventListener('change', syncDraftAndApply)
   roundSecEl?.addEventListener('input', updateDraftFromUi)
   targetEl?.addEventListener('input', updateDraftFromUi)
-  roundSecEl?.addEventListener('blur', updateDraftFromUi)
-  targetEl?.addEventListener('blur', updateDraftFromUi)
-  wordPackEl?.addEventListener('change', updateDraftFromUi)
-  applyBtn?.addEventListener('click', applyDraftSettings)
+  roundSecEl?.addEventListener('blur', syncDraftAndApply)
+  targetEl?.addEventListener('blur', syncDraftAndApply)
 }
 
 // init from URL

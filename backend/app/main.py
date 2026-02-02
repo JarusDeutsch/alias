@@ -423,12 +423,18 @@ async def ws_endpoint(ws: WebSocket) -> None:
             room_id = player.room_id if player else None
             player_name = player.name if player else None
             if room_id is not None and player_name is not None:
-                await connections.broadcast_player_left(room_id, player_name, exclude_player_id=player_id)
+                try:
+                    await connections.broadcast_player_left(room_id, player_name, exclude_player_id=player_id)
+                except Exception:
+                    pass
             removed = store.remove_player(player_id)
             connections.disconnect(player_id)
             if removed is not None:
                 r_id, _ = removed
-                await connections.broadcast_room(r_id)
+                try:
+                    await connections.broadcast_room(r_id)
+                except Exception:
+                    pass
             if room_id is not None:
                 still_connected = [
                     pid for pid, p in store.state.players.items()
