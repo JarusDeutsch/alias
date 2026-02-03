@@ -953,6 +953,16 @@ function renderRightPanel(view: WsView) {
           </select>
         </label>`
 
+  const wordPackLangSelect = !hasCustomPack
+    ? `
+        <label class="grid gap-1">
+          <span class="text-base text-slate-300">${escapeHtml(t('word_pack_lang_label'))}</span>
+          <select id="cfgWordPackLang" class="rounded-md bg-white/5 px-3 py-2 text-base ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500/60" ${canSettings && canChangeWordPack ? '' : 'disabled'}>
+            ${LOCALES.map((loc) => `<option value="${loc.code}" ${(cfg.word_pack_lang ?? 'ru') === loc.code ? 'selected' : ''}>${escapeHtml(loc.label)}</option>`).join('')}
+          </select>
+        </label>`
+    : ''
+
   const canRestartInGame = view.me.role === 'cluegiver' && !!view.me.team_id
   const restartInSettingsBtn =
     canRestartInGame
@@ -966,6 +976,7 @@ function renderRightPanel(view: WsView) {
       ? `
       <div class="mt-4 grid gap-3">
         ${wordPackSelect}
+        ${wordPackLangSelect}
 
         <label class="grid gap-1">
           <span class="text-base text-slate-300">Тип победы</span>
@@ -1191,6 +1202,7 @@ function updateDraftFromUi() {
   const roundSecEl = document.getElementById('cfgRoundSec') as HTMLInputElement | null
   const targetEl = document.getElementById('cfgTarget') as HTMLInputElement | null
   const wordPackEl = document.getElementById('cfgWordPack') as HTMLSelectElement | null
+  const wordPackLangEl = document.getElementById('cfgWordPackLang') as HTMLSelectElement | null
   if (!modeEl || !roundSecEl || !targetEl || !store.view) return
 
   const base = store.settingsDraft ?? store.view.room.config
@@ -1200,6 +1212,7 @@ function updateDraftFromUi() {
   const targetWords = mode === 'to_words' ? Math.max(CONFIG_TARGET_WORDS_MIN, Math.min(CONFIG_TARGET_WORDS_MAX, targetRaw)) : base.target_words
   const maxRounds = mode === 'to_rounds' ? Math.max(CONFIG_MAX_ROUNDS_MIN, Math.min(CONFIG_MAX_ROUNDS_MAX, targetRaw)) : base.max_rounds
   const word_pack = (wordPackEl?.value as WordPack) ?? (base.word_pack ?? 'medium')
+  const word_pack_lang = (wordPackLangEl?.value as WordPackLang) ?? (base.word_pack_lang ?? 'ru')
 
   store.settingsDraft = {
     mode,
@@ -1207,6 +1220,7 @@ function updateDraftFromUi() {
     target_words: targetWords,
     max_rounds: maxRounds,
     word_pack,
+    word_pack_lang,
   }
   store.settingsDirty = store.view ? configKey(store.settingsDraft) !== configKey(store.view.room.config) : false
   updateTargetLabel(mode)
@@ -1563,6 +1577,7 @@ function wireHandlers() {
   const roundSecEl = document.getElementById('cfgRoundSec') as HTMLInputElement | null
   const targetEl = document.getElementById('cfgTarget') as HTMLInputElement | null
   const wordPackEl = document.getElementById('cfgWordPack') as HTMLSelectElement | null
+  const wordPackLangEl = document.getElementById('cfgWordPackLang') as HTMLSelectElement | null
 
   function syncDraftAndApply() {
     updateDraftFromUi()
@@ -1571,6 +1586,7 @@ function wireHandlers() {
 
   modeEl?.addEventListener('change', syncDraftAndApply)
   wordPackEl?.addEventListener('change', syncDraftAndApply)
+  wordPackLangEl?.addEventListener('change', syncDraftAndApply)
   roundSecEl?.addEventListener('input', updateDraftFromUi)
   targetEl?.addEventListener('input', updateDraftFromUi)
   roundSecEl?.addEventListener('blur', syncDraftAndApply)
