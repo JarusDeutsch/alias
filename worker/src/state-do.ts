@@ -19,7 +19,10 @@ export class AliasState implements DurableObject {
   private roomCustomWords: Map<string, [string, string[]]> = new Map()
   private connections: Map<string, WebSocket> = new Map()
 
-  constructor(private ctx: DurableObjectState, private env: Env) {}
+  constructor(ctx: DurableObjectState, env: Env) {
+    void ctx
+    void env
+  }
 
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url)
@@ -39,7 +42,7 @@ export class AliasState implements DurableObject {
     const [client, server] = Object.values(pair)
     server.accept()
 
-    server.addEventListener('message', (event: MessageEvent<string | ArrayBuffer>) => {
+    server.addEventListener('message', (event: MessageEvent) => {
       try {
         const data = JSON.parse(String(event.data))
         if (data.type === 'hello') {
@@ -443,6 +446,8 @@ export class AliasState implements DurableObject {
     const team = this.state.teams[teamId]
     const room = this.state.rooms[player.room_id]
     if (player.room_id !== team.room_id) throw new Error('wrong_room')
+    // Первый игрок в пустой команде автоматически становится загадывающим
+    if (team.player_ids.length === 0) role = 'cluegiver'
     if (role !== 'guesser' && !room.game_over) {
       for (const tid of room.team_ids) {
         if (this.state.teams[tid]?.round_number > 0) throw new Error('cannot_change_role_during_game')

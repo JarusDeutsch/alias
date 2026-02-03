@@ -278,7 +278,7 @@ async function copyToClipboard(text: string): Promise<boolean> {
 
 function canEditSettings(view: WsView | null): boolean {
   if (!view) return false
-  return view.me.role === 'cluegiver' && !!view.me.team_id && !view.room.game_over
+  return !!view.me.team_id && !view.room.game_over
 }
 
 function remainingSeconds(team: TeamPrivateView | null): number | null {
@@ -1611,7 +1611,13 @@ function handleJoinTeamClick(el: HTMLElement | null) {
   if (!el) return
   if ('disabled' in el && (el as HTMLButtonElement).disabled) return
   const code = el.dataset.teamcode
-  if (code) void joinTeamByCode(code, 'guesser')
+  if (!code) return
+  // Уже в этой команде — ничего не делаем (иначе повторный вход сбрасывает роль на угадывающего)
+  if (store.teamCode && store.teamCode.toUpperCase() === code.toUpperCase()) return
+  const view = store.view
+  const team = view?.room?.teams?.find((t) => t.code.toUpperCase() === code.toUpperCase())
+  const role: PlayerRole = team && team.players_count === 0 ? 'cluegiver' : 'guesser'
+  void joinTeamByCode(code, role)
 }
 appEl.addEventListener('click', (e) => {
   const btn = (e.target as HTMLElement).closest('.joinTeamBtn') as HTMLElement | null
