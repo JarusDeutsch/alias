@@ -128,3 +128,11 @@ select option {
   background: #1e293b;
   color: #e2e8f0;
 }
+
+/* Тонкие разделительные линии между смысловыми блоками */
+.alias-divider {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.alias-divider-subtle {
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
