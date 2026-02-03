@@ -425,9 +425,8 @@ function render() {
   const mainContent = `
     <div class="alias-page-bg min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-slate-100">
       <div class="relative z-10 mx-auto max-w-[1520px] px-4 py-8">
-        ${header}
-        ${body}
-
+        <div id="aliasHeaderWrap">${header}</div>
+        <div id="aliasBodyWrap">${body}</div>
       </div>
     </div>
     ${wordsUploadEl}
@@ -442,6 +441,14 @@ function render() {
     `
     mainEl = document.getElementById('aliasMain')!
   }
+
+  // На экране лобби при повторном render() обновляем только шапку (статус), чтобы не затирать поля ввода
+  if (!view && document.getElementById('roomCode')) {
+    const headerWrap = document.getElementById('aliasHeaderWrap')
+    if (headerWrap) headerWrap.innerHTML = header
+    return
+  }
+
   mainEl.innerHTML = mainContent
   wireHandlers()
 }
