@@ -374,15 +374,19 @@ function render() {
   const connected = store.ws?.readyState === WebSocket.OPEN
   const connecting = store.connecting && !connected
 
+  const gameStartedForHeader = view && (view.room.teams ?? []).some((t) => t.round_number > 0) && !view.room.game_over
   const spectatorsPanel = view
       ? (() => {
           const spectators = view.room.spectators ?? []
-          return `<div class="rounded-xl bg-white/5 p-3 ring-1 ring-white/10 min-w-[160px]">
+          const content = `
             <div class="text-base text-slate-400">Игроки без команды</div>
             <div class="mt-2 flex flex-wrap gap-2">
               ${spectators.length ? spectators.map((n) => `<span class="rounded-full bg-white/10 px-2 py-1 text-base text-slate-200 ring-1 ring-white/10">${escapeHtml(n)}</span>`).join('') : '<span class="text-base text-slate-500">пока никого</span>'}
-            </div>
-          </div>`
+            </div>`
+          if (gameStartedForHeader) {
+            return `<div class="rounded-xl bg-white/5 p-3 ring-1 ring-white/10 min-w-[160px]">${content}</div>`
+          }
+          return `<button type="button" class="becomeSpectatorBtn rounded-xl bg-white/5 p-3 ring-1 ring-white/10 min-w-[160px] text-left hover:bg-white/10 hover:ring-white/20 focus:outline-none focus:ring-2 focus:ring-indigo-500/60 cursor-pointer transition-colors" title="Нажмите, чтобы выйти в игроки без команды">${content}</button>`
         })()
       : ''
 
@@ -584,7 +588,7 @@ function renderTopBar(view: WsView) {
       if (gameStarted) {
         return `<div class="flex items-center gap-2 rounded-xl bg-white/5 px-2.5 py-1.5 ring-1 ring-white/10">${base}</div>`
       }
-      return `<button type="button" data-teamcode="${escapeHtml(t.code)}" class="joinTeamBtn flex w-full items-center gap-2 rounded-xl bg-white/5 px-2.5 py-1.5 text-left ring-1 ring-white/10 hover:bg-white/10 hover:ring-white/20 focus:outline-none focus:ring-2 focus:ring-indigo-500/60 cursor-pointer">${base}</button>`
+      return `<button type="button" data-teamcode="${escapeHtml(t.code)}" class="joinTeamBtn flex w-full items-center gap-2 rounded-xl bg-white/5 px-2.5 py-1.5 text-left ring-1 ring-white/10 hover:bg-white/10 hover:ring-white/20 focus:outline-none focus:ring-2 focus:ring-indigo-500/60 cursor-pointer transition-colors" title="Нажмите, чтобы вступить в команду">${base}</button>`
     })
     .join('')
 
@@ -1415,12 +1419,7 @@ function wireHandlers() {
   ;(document.getElementById('restartGame') as HTMLButtonElement | null)?.addEventListener('click', () => void restartGame())
   ;(document.getElementById('restartGameInSettings') as HTMLButtonElement | null)?.addEventListener('click', () => void restartGame())
 
-  document.querySelectorAll<HTMLButtonElement>('.joinTeamBtn').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const code = btn.dataset.teamcode
-      if (code) void joinTeamByCode(code, 'guesser')
-    })
-  })
+  // joinTeamBtn и becomeSpectatorBtn обрабатываются через делегирование в init
 
   ;(document.getElementById('startRound') as HTMLButtonElement | null)?.addEventListener('click', () => sendWs({ type: 'start_round' }))
   ;(document.getElementById('endRound') as HTMLButtonElement | null)?.addEventListener('click', () => sendWs({ type: 'end_round' }))
@@ -1469,6 +1468,21 @@ appEl.addEventListener('click', async (e) => {
   if (!code) return
   const ok = await copyToClipboard(code)
   showToast(ok ? 'Код комнаты скопирован' : 'Не удалось скопировать')
+})
+
+// Делегирование: клик по панели команды (под «Комната /ID») — вступить в команду
+appEl.addEventListener('click', (e) => {
+  const btn = (e.target as HTMLElement).closest('.joinTeamBtn') as HTMLButtonElement | null
+  if (!btn || btn.disabled) return
+  const code = btn.dataset.teamcode
+  if (code) void joinTeamByCode(code, 'guesser')
+})
+
+// Делегирование: клик по панели «Игроки без команды» — выйти в наблюдатели
+appEl.addEventListener('click', (e) => {
+  const btn = (e.target as HTMLElement).closest('.becomeSpectatorBtn') as HTMLButtonElement | null
+  if (!btn) return
+  void changeMyRole('spectator')
 })
 
 // init from URL
