@@ -452,11 +452,20 @@ class StateStore:
         room.game_over = False
         room.winner_team_id = None
 
-        # сбрасываем прогресс всех команд, состав/роли не трогаем
+        # все игроки переходят в «Игроки без команды»
+        for p in list(self.state.players.values()):
+            if p.room_id != room_id:
+                continue
+            self._remove_player_from_team(p.id)
+            p.role = PlayerRole.spectator
+
+        # сбрасываем прогресс всех команд
         for tid in list(room.team_ids):
             t = self.state.teams.get(tid)
             if not t:
                 continue
+            t.player_ids.clear()
+            t.cluegiver_id = None
             t.score = 0
             t.total_correct = 0
             t.round_number = 0

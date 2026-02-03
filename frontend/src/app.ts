@@ -568,10 +568,11 @@ function renderGameLayout(view: WsView) {
 }
 
 function renderTopBar(view: WsView) {
+  const gameStarted = (view.room.teams ?? []).some((t) => t.round_number > 0) && !view.room.game_over
   const teams = view.room.teams
     .map((t) => {
       const winner = view.room.winner_team_id === t.id
-      return `<div class="flex items-center gap-2 rounded-xl bg-white/5 px-2.5 py-1.5 ring-1 ring-white/10">
+      const base = `
         <div class="min-w-0">
           <div class="truncate text-base font-medium text-slate-100">${escapeHtml(t.name)}</div>
           <div class="text-base text-slate-400">раунд ${t.round_number}${t.round_active ? ' (идёт)' : ''}</div>
@@ -579,8 +580,11 @@ function renderTopBar(view: WsView) {
         <div class="ml-auto text-right">
           <div class="text-base font-semibold ${winner ? 'text-emerald-200' : 'text-slate-100'}">${t.score}</div>
           <div class="text-base text-slate-400">${t.total_correct} слов</div>
-        </div>
-      </div>`
+        </div>`
+      if (gameStarted) {
+        return `<div class="flex items-center gap-2 rounded-xl bg-white/5 px-2.5 py-1.5 ring-1 ring-white/10">${base}</div>`
+      }
+      return `<button type="button" data-teamcode="${escapeHtml(t.code)}" class="joinTeamBtn flex w-full items-center gap-2 rounded-xl bg-white/5 px-2.5 py-1.5 text-left ring-1 ring-white/10 hover:bg-white/10 hover:ring-white/20 focus:outline-none focus:ring-2 focus:ring-indigo-500/60 cursor-pointer">${base}</button>`
     })
     .join('')
 
@@ -617,9 +621,13 @@ function renderTopBar(view: WsView) {
 
 function renderTeamChooser(view: WsView) {
   const teams = view.room.teams ?? []
+  const gameStarted = teams.some((t) => t.round_number > 0) && !view.room.game_over
+  const teamBtnClass = gameStarted
+    ? 'joinTeamBtn flex items-center justify-between gap-2 rounded-2xl bg-white/5 px-3 py-2 text-base ring-1 ring-white/10 cursor-not-allowed opacity-60'
+    : 'joinTeamBtn flex items-center justify-between gap-2 rounded-2xl bg-white/5 px-3 py-2 text-base ring-1 ring-white/10 hover:bg-white/10 cursor-pointer'
   const teamButtons = teams
     .map(
-      (t) => `<button data-teamcode="${escapeHtml(t.code)}" class="joinTeamBtn flex items-center justify-between gap-2 rounded-2xl bg-white/5 px-3 py-2 text-base ring-1 ring-white/10 hover:bg-white/10">
+      (t) => `<button data-teamcode="${escapeHtml(t.code)}" class="${teamBtnClass}" ${gameStarted ? 'disabled' : ''}>
         <span class="truncate">${escapeHtml(t.name)}</span>
         <span class="shrink-0 text-base text-slate-400">${t.players_count}</span>
       </button>`,

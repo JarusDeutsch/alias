@@ -704,9 +704,17 @@ export class AliasState implements DurableObject {
     if (actor.role !== 'cluegiver' || !actor.team_id) throw new Error('only_cluegiver')
     room.game_over = false
     room.winner_team_id = null
+    // все игроки переходят в «Игроки без команды»
+    for (const p of Object.values(this.state.players)) {
+      if (p.room_id !== roomId) continue
+      this.removePlayerFromTeam(p.id)
+      p.role = 'spectator'
+    }
     for (const tid of room.team_ids) {
       const t = this.state.teams[tid]
       if (!t) continue
+      t.player_ids = []
+      t.cluegiver_id = null
       t.score = 0
       t.total_correct = 0
       t.round_number = 0
