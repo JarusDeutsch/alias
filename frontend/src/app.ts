@@ -860,10 +860,10 @@ function renderCenterPanel(view: WsView) {
         <div class="text-base text-slate-300">Счёт: <span class="font-semibold text-slate-100">${team.score}</span></div>
       </div>
 
-      <div class="mt-6 rounded-2xl bg-gradient-to-b from-white/15 via-white/5 to-slate-900/60 p-7 ring-1 ring-white/15 shadow-xl shadow-black/40 flex flex-col min-h-[220px] sm:min-h-[260px]">
-        <div class="text-sm font-medium uppercase tracking-[0.18em] text-slate-300/80">Текущее слово</div>
-        <div class="mt-4 flex flex-1 items-center justify-center">
-          <div class="text-center text-5xl sm:text-6xl font-semibold tracking-tight text-white">${escapeHtml(currentWord)}</div>
+      <div class="mt-6 rounded-xl bg-gradient-to-br from-slate-600/25 via-slate-700/20 to-slate-800/40 p-5 ring-1 ring-white/10 flex flex-col min-h-[140px] sm:min-h-[180px]">
+        <div class="text-xs font-medium uppercase tracking-[0.18em] text-slate-400">Текущее слово</div>
+        <div class="mt-2 flex flex-1 items-center justify-center">
+          <div class="text-center text-4xl sm:text-5xl font-semibold tracking-tight text-white">${escapeHtml(currentWord)}</div>
         </div>
       </div>
 
