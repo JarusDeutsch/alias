@@ -1,3 +1,5 @@
+import { playCorrect, playDontKnow, playLose, playSkip, playWin } from './sounds'
+
 type PlayerRole = 'cluegiver' | 'guesser' | 'spectator'
 type GameMode = 'to_words' | 'to_rounds'
 type GuessOutcome = 'correct' | 'dont_know' | 'skip'
@@ -748,7 +750,7 @@ function renderCenterPanel(view: WsView) {
   if (!view.me.team_id) {
     return `
       <div class="text-base font-semibold">Игровой экран</div>
-      <div class="mt-1 text-base text-slate-300">Выберите команду слева или создайте её кнопкой “+”.</div>
+      <div class="mt-1 text-base text-slate-300">Выберите команду или создайте её кнопкой “+”.</div>
       <div class="mt-6 rounded-3xl bg-white/5 p-7 ring-1 ring-white/10">
         <div class="text-base text-slate-300">Поля угадывания</div>
         <div class="mt-3 text-base text-slate-400">Пока пусто — вы ещё не в команде.</div>
@@ -1055,9 +1057,15 @@ async function connectWs(force: boolean) {
     try {
       const data = JSON.parse(ev.data) as WsState | WsError | WsPlayerLeft | WsLeft
       if (data.type === 'state') {
+        const prevGameOver = store.view?.room?.game_over
         store.view = data.view
         if (store.settingsDraft && configKey(store.settingsDraft) === configKey(data.view.room.config)) store.settingsDirty = false
         if (!store.settingsDirty) store.settingsDraft = data.view.room.config
+        if (!prevGameOver && data.view.room.game_over && data.view.room.winner_team_id != null) {
+          const myTeamId = data.view.me.team_id
+          if (myTeamId === data.view.room.winner_team_id) playWin()
+          else if (myTeamId != null) playLose()
+        }
         render()
       } else if (data.type === 'player_left') {
         showToastLeave(`${escapeHtml(data.player_name)} покинул комнату`)
@@ -1430,9 +1438,18 @@ function wireHandlers() {
   ;(document.getElementById('startRound') as HTMLButtonElement | null)?.addEventListener('click', () => sendWs({ type: 'start_round' }))
   ;(document.getElementById('endRound') as HTMLButtonElement | null)?.addEventListener('click', () => sendWs({ type: 'end_round' }))
 
-  ;(document.getElementById('markCorrect') as HTMLButtonElement | null)?.addEventListener('click', () => sendWs({ type: 'mark', outcome: 'correct' }))
-  ;(document.getElementById('markDontKnow') as HTMLButtonElement | null)?.addEventListener('click', () => sendWs({ type: 'mark', outcome: 'dont_know' }))
-  ;(document.getElementById('markSkip') as HTMLButtonElement | null)?.addEventListener('click', () => sendWs({ type: 'mark', outcome: 'skip' }))
+  ;(document.getElementById('markCorrect') as HTMLButtonElement | null)?.addEventListener('click', () => {
+    playCorrect()
+    sendWs({ type: 'mark', outcome: 'correct' })
+  })
+  ;(document.getElementById('markDontKnow') as HTMLButtonElement | null)?.addEventListener('click', () => {
+    playDontKnow()
+    sendWs({ type: 'mark', outcome: 'dont_know' })
+  })
+  ;(document.getElementById('markSkip') as HTMLButtonElement | null)?.addEventListener('click', () => {
+    playSkip()
+    sendWs({ type: 'mark', outcome: 'skip' })
+  })
 
   appEl.addEventListener('click', (e) => {
     const btn = (e.target as HTMLElement).closest('.setWordOutcomeBtn') as HTMLButtonElement | null
