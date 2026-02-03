@@ -702,7 +702,6 @@ export class AliasState implements DurableObject {
     const actor = this.state.players[actorPlayerId]
     if (!actor || actor.room_id !== roomId) throw new Error('wrong_room')
     if (actor.role !== 'cluegiver' || !actor.team_id) throw new Error('only_cluegiver')
-    if (!room.game_over) throw new Error('not_game_over')
     room.game_over = false
     room.winner_team_id = null
     for (const tid of room.team_ids) {
