@@ -131,6 +131,11 @@ const store = {
   lobbyRoomInfo: null as RoomPublicView | null,
   reconnectAttempt: 0,
   reconnectTimerId: null as number | null,
+  lobbyLoadingMessage: null as string | null,
+  mobileTab: 'team' as 'team' | 'controls',
+  isMobile: false,
+  copiedRoomCode: null as string | null,
+  copiedRoomCodeTimerId: null as number | null,
 }
 
 function showToast(message: string) {
@@ -470,6 +475,10 @@ function renderLobbyLayout() {
 }
 
 function renderLobbyCard() {
+  const roomCodeFromUrl = parseRoomCodeFromUrl()
+  const fromUrl = roomCodeFromUrl !== null && store.roomCode.trim().toUpperCase() === roomCodeFromUrl
+  const codeDisplay = escapeHtml(store.roomCode.trim().toUpperCase() || roomCodeFromUrl || '')
+
   return `
     <h2 class="text-lg font-semibold">Лобби</h2>
     <p class="mt-1 text-base text-slate-300">Выберите ник и создайте комнату или войдите по номеру</p>
@@ -487,6 +496,21 @@ function renderLobbyCard() {
           class="rounded-lg bg-white/5 px-2.5 py-1.5 text-sm uppercase tracking-widest ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500/60" />
       </label>
 
+      ${
+        fromUrl && codeDisplay
+          ? `
+      <div class="mt-1 rounded-2xl bg-emerald-500/15 p-4 ring-2 ring-emerald-500/40">
+        <p class="text-base font-medium text-emerald-100">Вас пригласили в комнату</p>
+        <button id="enterRoom" type="button" class="mt-3 w-full rounded-xl bg-emerald-500 px-5 py-3.5 text-lg font-semibold text-emerald-950 hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 focus:ring-offset-slate-900">
+          Войти в комнату /${codeDisplay}
+        </button>
+      </div>
+      <div class="mt-1">
+        <button id="createRoom" class="min-w-[10.5rem] rounded-xl bg-white/10 px-4 py-2 text-sm font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/15">
+          Создать свою комнату
+        </button>
+      </div>`
+          : `
       <div class="mt-1 grid gap-2 sm:grid-cols-2">
         <button id="createRoom" class="min-w-[10.5rem] rounded-xl bg-indigo-500 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-400">
           Создать комнату
@@ -494,7 +518,8 @@ function renderLobbyCard() {
         <button id="enterRoom" class="min-w-[10.5rem] rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-950 hover:bg-emerald-400 disabled:opacity-50" ${store.roomCode.trim() ? '' : 'disabled'}>
           Войти по коду
         </button>
-      </div>
+      </div>`
+      }
 
       <div id="lobbyRoomCodeRow">${
         store.roomCode
@@ -502,15 +527,16 @@ function renderLobbyCard() {
               <span>Комната:</span>
               <button
                 type="button"
-                class="copyRoomCode inline-flex items-center font-mono tracking-widest text-slate-200 underline decoration-dotted underline-offset-4 hover:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/60"
+                class="copyRoomCode inline-flex items-center gap-1 font-mono tracking-widest underline decoration-dotted underline-offset-4 hover:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/60 ${store.copiedRoomCode === store.roomCode.trim().toUpperCase() ? 'text-emerald-400' : 'text-slate-200'}"
                 title="Нажмите, чтобы скопировать код комнаты"
                 data-roomcode="${escapeHtml(store.roomCode)}"
-              >/${escapeHtml(store.roomCode)}</button>
+              >${store.copiedRoomCode === store.roomCode.trim().toUpperCase() ? 'Скопировано ✓' : `/${escapeHtml(store.roomCode)}`}</button>
               <button id="loadRoom" type="button" class="rounded-lg bg-white/10 px-2 py-1 text-sm text-slate-300 hover:bg-white/15">Обновить</button>
             </div>`
           : `<div class="text-base text-slate-400"></div>`
       }</div>
 
+      ${store.lobbyLoadingMessage ? `<div id="lobbyStatus" class="rounded-xl bg-white/5 px-3 py-2 text-base text-slate-300 ring-1 ring-white/10 flex items-center gap-2"><span class="alias-spinner"></span><span>${escapeHtml(store.lobbyLoadingMessage)}</span></div>` : '<div id="lobbyStatus" class="hidden rounded-xl bg-white/5 px-3 py-2 text-base text-slate-300 ring-1 ring-white/10"></div>'}
       <div id="lobbyError" class="hidden rounded-xl bg-rose-500/10 px-3 py-2 text-base text-rose-200 ring-1 ring-rose-500/20"></div>
     </div>
   `
@@ -563,13 +589,24 @@ function renderGameLayout(view: WsView) {
   const left = card(renderMyTeamPanel(view), 'h-fit lg:w-[280px] lg:justify-self-end')
   const center = card(renderCenterPanel(view), 'min-h-[540px] w-full lg:justify-self-center')
   const right = card(renderRightPanel(view), 'h-fit lg:w-[440px] lg:justify-self-start')
+  const mobileTab = store.mobileTab
+  const isMobile = store.isMobile
   return `
     ${renderGlobalTimer(view)}
     ${top}
     <div class="mt-6 grid gap-6 lg:grid-cols-[1fr_minmax(0,960px)_1fr]">
-      ${left}
-      ${center}
-      ${right}
+      ${!isMobile ? `<div>${left}</div>` : ''}
+      <div>${center}</div>
+      ${!isMobile ? `<div>${right}</div>` : ''}
+      ${isMobile ? `
+      <div class="alias-mobile-tabs min-w-0">
+        <div class="flex gap-2 border-b border-white/10 pb-2">
+          <button type="button" class="alias-mobile-tab rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors ${mobileTab === 'team' ? 'bg-white/15 text-white ring-1 ring-white/20' : 'bg-white/5 text-slate-400 ring-1 ring-white/10 hover:bg-white/10'}" data-tab="team">Команда</button>
+          <button type="button" class="alias-mobile-tab rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors ${mobileTab === 'controls' ? 'bg-white/15 text-white ring-1 ring-white/20' : 'bg-white/5 text-slate-400 ring-1 ring-white/10 hover:bg-white/10'}" data-tab="controls">Управление</button>
+        </div>
+        <div class="alias-mobile-panel mt-3 min-w-0">${mobileTab === 'team' ? left : right}</div>
+      </div>
+      ` : ''}
     </div>
   `
 }
@@ -617,10 +654,10 @@ function renderTopBar(view: WsView) {
             Комната
             <button
               type="button"
-              class="copyRoomCode ml-1 inline-flex items-center font-mono tracking-widest text-slate-100 underline decoration-dotted underline-offset-4 hover:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/60"
+              class="copyRoomCode ml-1 inline-flex items-center gap-1 font-mono tracking-widest underline decoration-dotted underline-offset-4 hover:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/60 ${store.copiedRoomCode === view.room.code ? 'text-emerald-400' : 'text-slate-100'}"
               title="Нажмите, чтобы скопировать код комнаты"
               data-roomcode="${escapeHtml(view.room.code)}"
-            >/${escapeHtml(view.room.code)}</button>
+            >${store.copiedRoomCode === view.room.code ? 'Скопировано ✓' : `/${escapeHtml(view.room.code)}`}</button>
           </div>
         </div>
       </div>
@@ -729,17 +766,38 @@ function renderMyTeamPanel(view: WsView) {
 
 function renderCenterPanel(view: WsView) {
   if (view.room.game_over) {
-    const winner = view.room.teams.find((t) => t.id === view.room.winner_team_id)
+    const teams = view.room.teams ?? []
+    const winner = teams.find((t) => t.id === view.room.winner_team_id)
     const canRestart = view.me.role === 'cluegiver' && !!view.me.team_id
+    const teamsList = teams
+      .map((t) => {
+        const isWinner = t.id === view.room.winner_team_id
+        return `<div class="flex items-center justify-between gap-4 rounded-xl px-4 py-3 ring-1 ${isWinner ? 'bg-emerald-500/15 ring-emerald-500/30' : 'bg-white/5 ring-white/10'}">
+          <span class="text-base font-medium ${isWinner ? 'text-emerald-100' : 'text-slate-300'}">${escapeHtml(t.name)}</span>
+          <span class="text-lg font-semibold tabular-nums ${isWinner ? 'text-emerald-50' : 'text-slate-200'}">${t.score}</span>
+        </div>`
+      })
+      .join('')
+    const confettiColors = ['bg-emerald-400', 'bg-amber-400', 'bg-rose-400', 'bg-sky-400', 'bg-violet-400']
+    const confettiPieces = Array.from({ length: 12 }, (_, i) => {
+      const color = confettiColors[i % confettiColors.length]
+      const left = 10 + (i * 7) % 80
+      const delay = (i * 0.08) + 0.2
+      return `<span class="alias-confetti-piece absolute h-2 w-1 rounded-full opacity-90 ${color}" style="left:${left}%; animation-delay:${delay}s"></span>`
+    }).join('')
     return `
-      <div class="text-base text-slate-300">Игра завершена</div>
-      <div class="mt-3 rounded-2xl bg-emerald-500/10 p-5 ring-1 ring-emerald-500/20">
-        <div class="text-base text-emerald-200">Победитель</div>
-        <div class="mt-1 text-4xl font-semibold text-emerald-50">${escapeHtml(winner?.name ?? '—')}</div>
+      <div class="alias-game-over-wrap text-base text-slate-300">Игра завершена</div>
+      <div class="alias-game-over-confetti relative mt-3 overflow-hidden rounded-2xl bg-emerald-500/10 py-6 px-5 ring-2 ring-emerald-500/30">
+        <div class="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">${confettiPieces}</div>
+        <div class="relative">
+          <div class="text-center text-sm font-medium text-emerald-200/90">Победитель</div>
+          <div class="alias-game-over-winner mt-2 text-center text-4xl font-bold tracking-tight text-emerald-50 drop-shadow-[0_0_20px_rgba(16,185,129,0.4)] sm:text-5xl">${escapeHtml(winner?.name ?? '—')}</div>
+          <div class="mt-5 grid gap-2">${teamsList}</div>
+        </div>
       </div>
       ${
         canRestart
-          ? `<button id="restartGame" class="mt-5 w-full rounded-2xl bg-white/10 px-4 py-3 text-base font-semibold text-white ring-1 ring-white/10 hover:bg-white/15">
+          ? `<button id="restartGame" class="mt-5 w-full rounded-2xl bg-white/10 px-4 py-3 text-base font-semibold text-white ring-1 ring-white/10 hover:bg-white/15 transition-opacity">
               Перезапустить игру
             </button>`
           : ''
@@ -788,23 +846,26 @@ function renderCenterPanel(view: WsView) {
         <div class="mt-3 text-center text-5xl font-semibold tracking-tight text-white">${escapeHtml(currentWord)}</div>
       </div>
 
-      <div class="mt-5 grid gap-3 sm:grid-cols-3">
-        <button id="markCorrect" class="rounded-2xl bg-emerald-500 px-4 py-3 text-base font-semibold text-emerald-950 hover:bg-emerald-400 disabled:opacity-50" ${
+      <div class="mt-5 alias-outcome-buttons rounded-2xl p-3 ring-1 ring-white/10 ${timeExpired ? 'alias-outcome-buttons-expired' : ''}">
+        <div class="grid gap-3 sm:grid-cols-3">
+          <button id="markCorrect" class="rounded-2xl bg-emerald-500 px-4 py-3 text-base font-semibold text-emerald-950 hover:bg-emerald-400 disabled:opacity-50" ${
           team.round_active ? '' : 'disabled'
-        }>
-          Угадал (+1)
-        </button>
-        <button id="markDontKnow" class="rounded-2xl bg-white/10 px-4 py-3 text-base font-semibold text-white ring-1 ring-white/10 hover:bg-white/15 disabled:opacity-50" ${
+        } title="Клавиша 1">
+            Угадал (+1)
+          </button>
+          <button id="markDontKnow" class="rounded-2xl bg-white/10 px-4 py-3 text-base font-semibold text-white ring-1 ring-white/10 hover:bg-white/15 disabled:opacity-50" ${
           team.round_active ? '' : 'disabled'
-        }>
-          Не знаю (0)
-        </button>
-        <button id="markSkip" class="rounded-2xl bg-rose-500/90 px-4 py-3 text-base font-semibold text-white hover:bg-rose-400 disabled:opacity-50" ${
+        } title="Клавиша 2">
+            Не знаю (0)
+          </button>
+          <button id="markSkip" class="rounded-2xl bg-rose-500/90 px-4 py-3 text-base font-semibold text-white hover:bg-rose-400 disabled:opacity-50" ${
           team.round_active ? '' : 'disabled'
-        }>
-          Пропуск (-1)
-        </button>
+        } title="Клавиша 3">
+            Пропуск (-1)
+          </button>
+        </div>
       </div>
+      <p class="mt-2 text-center text-sm text-slate-500">Клавиши 1, 2, 3 — быстрые действия</p>
 
       <div class="mt-4 rounded-xl bg-white/5 px-3 py-2 text-base text-slate-300 ring-1 ring-white/10">
         Последнее показанное угадывающим: <span class="font-semibold text-slate-100">${escapeHtml(team.last_revealed_word ?? '—')}</span>
@@ -1145,6 +1206,7 @@ function applyDraftSettings() {
   store.settingsDirty = configKey(store.settingsDraft) !== configKey(store.view.room.config)
   if (!store.settingsDirty) return
   sendWs({ type: 'update_settings', config: store.settingsDraft })
+  showToast('Настройки применены')
 }
 
 async function loadRoomInfo() {
@@ -1188,7 +1250,9 @@ async function ensureJoinedSpectator(roomCode: string) {
 
   const name = store.playerName.trim()
   try {
-    setError('lobbyError', 'Входим в комнату…')
+    setError('lobbyError', null)
+    store.lobbyLoadingMessage = 'Входим в комнату…'
+    render()
     const data = await fetchJson<{ room_id: string; player_id: string; team_id: string | null }>(
       `${API_BASE}/api/rooms/${code}/join`,
       { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ player_name: name, role: 'spectator' }) },
@@ -1203,9 +1267,13 @@ async function ensureJoinedSpectator(roomCode: string) {
     store.connecting = true
     render()
     await connectWs(true)
+    store.lobbyLoadingMessage = null
     setError('lobbyError', null)
+    render()
   } catch (e) {
+    store.lobbyLoadingMessage = null
     setError('lobbyError', apiErrorMessage((e as Error).message))
+    render()
   }
 }
 
@@ -1224,12 +1292,18 @@ function leaveRoomToLobby() {
   store.settingsOpen = false
   store.spectatorsOpen = false
   store.lobbyRoomInfo = null
+  store.lobbyLoadingMessage = null
   store.ws?.close()
   store.ws = null
   if (store.reconnectTimerId != null) {
     window.clearTimeout(store.reconnectTimerId)
     store.reconnectTimerId = null
   }
+  if (store.copiedRoomCodeTimerId != null) {
+    window.clearTimeout(store.copiedRoomCodeTimerId)
+    store.copiedRoomCodeTimerId = null
+  }
+  store.copiedRoomCode = null
   store.reconnectAttempt = 0
   save()
   render()
@@ -1242,7 +1316,9 @@ async function createRoom() {
     return
   }
   try {
-    setError('lobbyError', 'Создаём комнату…')
+    setError('lobbyError', null)
+    store.lobbyLoadingMessage = 'Создаём комнату…'
+    render()
     const data = await fetchJson<{ room_id: string; room_code: string }>(
       `${API_BASE}/api/rooms`,
       { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'Комната' }) },
@@ -1252,9 +1328,13 @@ async function createRoom() {
     save()
     history.pushState({}, '', `/${store.roomCode}`)
     await loadRoomInfo()
+    store.lobbyLoadingMessage = null
+    render()
     await ensureJoinedSpectator(store.roomCode)
   } catch (e) {
+    store.lobbyLoadingMessage = null
     setError('lobbyError', apiErrorMessage((e as Error).message))
+    render()
   }
 }
 
@@ -1353,10 +1433,12 @@ function wireHandlers() {
     if (enterBtn) enterBtn.disabled = !store.roomCode.trim()
     const row = document.getElementById('lobbyRoomCodeRow')
     if (row) {
+      const codeUpper = store.roomCode.trim().toUpperCase()
+      const isCopied = store.copiedRoomCode === codeUpper
       row.innerHTML = store.roomCode
         ? `<div class="flex flex-wrap items-center gap-2 text-base text-slate-400">
             <span>Комната:</span>
-            <button type="button" class="copyRoomCode inline-flex items-center font-mono tracking-widest text-slate-200 underline decoration-dotted underline-offset-4 hover:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/60" title="Нажмите, чтобы скопировать код комнаты" data-roomcode="${escapeHtml(store.roomCode)}">/${escapeHtml(store.roomCode)}</button>
+            <button type="button" class="copyRoomCode inline-flex items-center gap-1 font-mono tracking-widest underline decoration-dotted underline-offset-4 hover:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/60 ${isCopied ? 'text-emerald-400' : 'text-slate-200'}" title="Нажмите, чтобы скопировать код комнаты" data-roomcode="${escapeHtml(store.roomCode)}">${isCopied ? 'Скопировано ✓' : `/${escapeHtml(store.roomCode)}`}</button>
             <button id="loadRoom" type="button" class="rounded-lg bg-white/10 px-2 py-1 text-sm text-slate-300 hover:bg-white/15">Обновить</button>
           </div>`
         : `<div class="text-base text-slate-400"></div>`
@@ -1483,6 +1565,7 @@ function wireHandlers() {
 }
 
 // Делегирование: копирование кода комнаты (работает и для кнопки, вставленной при вводе кода без полного render)
+const COPIED_ROOM_CODE_DURATION_MS = 2000
 appEl.addEventListener('click', async (e) => {
   const btn = (e.target as HTMLElement).closest('.copyRoomCode') as HTMLButtonElement | null
   if (!btn) return
@@ -1491,6 +1574,16 @@ appEl.addEventListener('click', async (e) => {
   if (!code) return
   const ok = await copyToClipboard(code)
   showToast(ok ? 'Код комнаты скопирован' : 'Не удалось скопировать')
+  if (ok) {
+    if (store.copiedRoomCodeTimerId != null) window.clearTimeout(store.copiedRoomCodeTimerId)
+    store.copiedRoomCode = code
+    store.copiedRoomCodeTimerId = window.setTimeout(() => {
+      store.copiedRoomCodeTimerId = null
+      store.copiedRoomCode = null
+      render()
+    }, COPIED_ROOM_CODE_DURATION_MS)
+    render()
+  }
 })
 
 // Делегирование: клик по панели команды (под «Комната /ID») — вступить в команду
@@ -1519,6 +1612,29 @@ appEl.addEventListener('click', (e) => {
   void changeMyRole('spectator')
 })
 
+// Делегирование: мобильные табы «Команда» / «Управление»
+appEl.addEventListener('click', (e) => {
+  const btn = (e.target as HTMLElement).closest('.alias-mobile-tab') as HTMLButtonElement | null
+  if (!btn) return
+  const tab = btn.dataset.tab as 'team' | 'controls' | undefined
+  if (tab === 'team' || tab === 'controls') {
+    store.mobileTab = tab
+    render()
+  }
+})
+
+// Мобильный вид: lg = 1024px
+const LG_BREAKPOINT = 1024
+function updateIsMobile() {
+  const next = window.innerWidth < LG_BREAKPOINT
+  if (store.isMobile !== next) {
+    store.isMobile = next
+    render()
+  }
+}
+store.isMobile = window.innerWidth < LG_BREAKPOINT
+window.addEventListener('resize', updateIsMobile)
+
 // init from URL
 const urlRoom = parseRoomCodeFromUrl()
 if (urlRoom) {
@@ -1546,6 +1662,34 @@ render()
 if (store.playerId) {
   void connectWs(false)
 }
+
+// Горячие клавиши для загадывающего: 1 — Угадал, 2 — Не знаю, 3 — Пропуск
+document.addEventListener('keydown', (e) => {
+  const view = store.view
+  const team = view?.my_team
+  if (!view || !team || view.me.role !== 'cluegiver' || team.cluegiver_id !== view.me.id || !team.round_active) return
+  const active = document.activeElement as HTMLElement | null
+  if (active?.tagName === 'INPUT' || active?.tagName === 'TEXTAREA' || active?.tagName === 'SELECT') return
+  if (e.key === '1') {
+    e.preventDefault()
+    if (store.ws?.readyState === WebSocket.OPEN) {
+      playCorrect()
+      store.ws.send(JSON.stringify({ type: 'mark', outcome: 'correct' }))
+    }
+  } else if (e.key === '2') {
+    e.preventDefault()
+    if (store.ws?.readyState === WebSocket.OPEN) {
+      playDontKnow()
+      store.ws.send(JSON.stringify({ type: 'mark', outcome: 'dont_know' }))
+    }
+  } else if (e.key === '3') {
+    e.preventDefault()
+    if (store.ws?.readyState === WebSocket.OPEN) {
+      playSkip()
+      store.ws.send(JSON.stringify({ type: 'mark', outcome: 'skip' }))
+    }
+  }
+})
 
 window.setInterval(() => {
   store.nowMs = Date.now()
