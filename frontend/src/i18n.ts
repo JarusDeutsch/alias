@@ -457,6 +457,11 @@ function getStoredLocale(): Locale {
 
 let currentLocale: Locale = getStoredLocale()
 
+// Синхронизируем lang при первой загрузке (setLocale при том же значении не вызывается)
+if (typeof document !== 'undefined' && document.documentElement) {
+  document.documentElement.lang = currentLocale === 'uk' ? 'uk' : currentLocale === 'en' ? 'en' : 'ru'
+}
+
 export function getLocale(): Locale {
   return currentLocale
 }

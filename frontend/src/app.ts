@@ -1,3 +1,4 @@
+import { getLocale, type Locale, LOCALES, setLocale, t } from './i18n'
 import { playCorrect, playDontKnow, playLose, playSkip, playWin } from './sounds'
 
 type PlayerRole = 'cluegiver' | 'guesser' | 'spectator'
@@ -5,6 +6,7 @@ type GameMode = 'to_words' | 'to_rounds'
 type GuessOutcome = 'correct' | 'dont_know' | 'skip'
 
 type WordPack = 'simple' | 'medium' | 'hard'
+type WordPackLang = 'ru' | 'uk' | 'en'
 
 type GameConfig = {
   mode: GameMode
@@ -12,6 +14,7 @@ type GameConfig = {
   target_words: number
   max_rounds: number
   word_pack?: WordPack
+  word_pack_lang?: WordPackLang
 }
 
 type WordEvent = {
@@ -89,6 +92,8 @@ const API_BASE =
     ? import.meta.env.VITE_API_BASE.replace(/\/$/, '')
     : `${window.location.protocol}//${window.location.hostname}:8000`
 const appEl = document.querySelector<HTMLDivElement>('#app')!
+
+setLocale(getLocale())
 
 const PLAYER_NAME_MIN_LEN = 1
 const PLAYER_NAME_MAX_LEN = 64
@@ -176,7 +181,7 @@ function escapeHtml(s: string) {
 }
 
 function configKey(c: GameConfig): string {
-  return `${c.mode}|${c.round_seconds}|${c.target_words}|${c.max_rounds}|${c.word_pack ?? 'medium'}`
+  return `${c.mode}|${c.round_seconds}|${c.target_words}|${c.max_rounds}|${c.word_pack ?? 'medium'}|${c.word_pack_lang ?? 'ru'}`
 }
 
 function parseRoomCodeFromUrl(): string | null {
@@ -188,35 +193,21 @@ function parseRoomCodeFromUrl(): string | null {
 
 function validatePlayerName(name: string): string | null {
   const s = name.trim()
-  if (s.length < PLAYER_NAME_MIN_LEN) return 'Введите имя'
-  if (s.length > PLAYER_NAME_MAX_LEN) return `Имя не длиннее ${PLAYER_NAME_MAX_LEN} символов`
+  if (s.length < PLAYER_NAME_MIN_LEN) return t('err_enter_name')
+  if (s.length > PLAYER_NAME_MAX_LEN) return t('err_name_max', { max: PLAYER_NAME_MAX_LEN })
   return null
 }
 
 function validateRoomCode(code: string): string | null {
   const s = code.trim().toUpperCase()
-  if (s.length < ROOM_CODE_MIN_LEN) return 'Введите код комнаты'
-  if (s.length > ROOM_CODE_MAX_LEN) return `Код комнаты от ${ROOM_CODE_MIN_LEN} до ${ROOM_CODE_MAX_LEN} символов`
-  if (!/^[A-Za-z0-9]+$/.test(s)) return 'Код комнаты — только латиница и цифры'
+  if (s.length < ROOM_CODE_MIN_LEN) return t('err_enter_room_code')
+  if (s.length > ROOM_CODE_MAX_LEN) return t('err_room_code_length', { min: ROOM_CODE_MIN_LEN, max: ROOM_CODE_MAX_LEN })
+  if (!/^[A-Za-z0-9]+$/.test(s)) return t('err_room_code_alnum')
   return null
 }
 
-const API_ERROR_MESSAGES: Record<string, string> = {
-  room_not_found: 'Комната не найдена',
-  team_not_found: 'Команда не найдена',
-  player_not_found: 'Игрок не найден',
-  wrong_room: 'Неверная комната',
-  team_code_required: 'Укажите код команды',
-  csv_file_required: 'Нужен файл CSV',
-  utf8_required: 'Файл должен быть в кодировке UTF-8',
-  no_words_in_file: 'В файле нет слов',
-  file_too_large: 'Файл слишком большой (макс. 512 КБ)',
-  too_many_words: 'Слишком много слов (макс. 5000)',
-  file_read_error: 'Не удалось прочитать файл',
-}
-
 function apiErrorMessage(detail: string): string {
-  return API_ERROR_MESSAGES[detail] ?? detail
+  return t(detail)
 }
 
 async function fetchJson<T>(url: string, init: RequestInit, timeoutMs = 6000): Promise<T> {
@@ -387,28 +378,38 @@ function render() {
       ? (() => {
           const spectators = view.room.spectators ?? []
           const content = `
-            <div class="text-base text-slate-400">Игроки без команды</div>
+            <div class="text-base text-slate-400">${t('spectators_title')}</div>
             <div class="mt-2 flex flex-wrap gap-2">
-              ${spectators.length ? spectators.map((n) => `<span class="rounded-full bg-white/10 px-2 py-1 text-base text-slate-200 ring-1 ring-white/10">${escapeHtml(n)}</span>`).join('') : '<span class="text-base text-slate-500">пока никого</span>'}
+              ${spectators.length ? spectators.map((n) => `<span class="rounded-full bg-white/10 px-2 py-1 text-base text-slate-200 ring-1 ring-white/10">${escapeHtml(n)}</span>`).join('') : `<span class="text-base text-slate-500">${t('spectators_empty')}</span>`}
             </div>`
           if (gameStartedForHeader) {
             return `<div class="rounded-md bg-white/5 p-3 ring-1 ring-white/10 min-w-[160px]">${content}</div>`
           }
-          return `<button type="button" class="becomeSpectatorBtn rounded-md bg-white/5 p-3 ring-1 ring-white/10 min-w-[160px] text-left hover:bg-white/10 hover:ring-white/20 focus:outline-none focus:ring-2 focus:ring-indigo-500/60 cursor-pointer transition-colors" title="Нажмите, чтобы выйти в игроки без команды">${content}</button>`
+          return `<button type="button" class="becomeSpectatorBtn rounded-md bg-white/5 p-3 ring-1 ring-white/10 min-w-[160px] text-left hover:bg-white/10 hover:ring-white/20 focus:outline-none focus:ring-2 focus:ring-indigo-500/60 cursor-pointer transition-colors" title="${t('spectators_click_leave')}">${content}</button>`
         })()
       : ''
 
   const reconnectBtn =
     view && store.playerId && !connected && !connecting
-      ? `<button id="reconnectBtn" type="button" class="ml-2 rounded-md bg-sky-500/80 px-3 py-1.5 text-sm font-medium text-white hover:bg-sky-400">Переподключиться</button>`
+      ? `<button id="reconnectBtn" type="button" class="ml-2 rounded-md bg-sky-500/80 px-3 py-1.5 text-sm font-medium text-white hover:bg-sky-400">${t('reconnect')}</button>`
       : ''
+  const langSwitcher = `
+    <div class="alias-lang-switcher inline-flex rounded-lg bg-white/5 p-0.5 ring-1 ring-white/10" role="group" aria-label="Language">
+      ${LOCALES.map(
+        (loc) =>
+          `<button type="button" class="alias-lang-btn min-w-[2.25rem] rounded-md px-2 py-1.5 text-sm font-medium transition-colors ${getLocale() === loc.code ? 'bg-indigo-500/80 text-white' : 'text-slate-400 hover:bg-white/10 hover:text-slate-200'}" data-locale="${loc.code}" title="${escapeHtml(loc.native)}">${loc.label}</button>`,
+      ).join('')}
+    </div>`
   const header = `
     <div class="flex items-center justify-between gap-3">
       <div>
-        <div class="inline-flex items-center gap-1.5 rounded-full bg-white/5 px-2.5 py-0.5 text-sm text-slate-200 ring-1 ring-white/10">
-          <span class="h-2 w-2 rounded-full ${connected ? 'bg-emerald-400' : connecting ? 'bg-sky-400' : 'bg-amber-400'}"></span>
-          <span>${connected ? 'Подключено' : connecting ? 'Подключаемся…' : 'Не подключено'}</span>
-          ${reconnectBtn}
+        <div class="flex flex-wrap items-center gap-2">
+          <div class="inline-flex items-center gap-1.5 rounded-full bg-white/5 px-2.5 py-0.5 text-sm text-slate-200 ring-1 ring-white/10">
+            <span class="h-2 w-2 rounded-full ${connected ? 'bg-emerald-400' : connecting ? 'bg-sky-400' : 'bg-amber-400'}"></span>
+            <span>${connected ? t('status_connected') : connecting ? t('status_connecting') : t('status_disconnected')}</span>
+            ${reconnectBtn}
+          </div>
+          ${langSwitcher}
         </div>
         <h1 class="mt-2 text-3xl font-semibold tracking-tight">Alias Web</h1>
         <p class="mt-1 text-base text-slate-300">${escapeHtml(tagline)}</p>
@@ -426,10 +427,10 @@ function render() {
       ? `
     <div class="fixed bottom-4 right-4 z-40">
       <input type="file" id="wordsCsvInput" accept=".csv" class="hidden" />
-      <button type="button" id="uploadWordsBtn" title="${!canChangeWordPackBtn ? 'Пак слов нельзя менять после начала первого раунда до конца игры' : view.room.custom_words_name ? 'Пак слов загружен' : 'Загрузить пак слов из CSV для этой комнаты'}"
+      <button type="button" id="uploadWordsBtn" title="${!canChangeWordPackBtn ? t('word_pack_locked') : view.room.custom_words_name ? t('word_pack_uploaded') : t('word_pack_upload_hint')}"
         class="rounded-md bg-white/10 px-3 py-2 text-sm font-medium text-slate-200 ring-1 ring-white/10 hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-indigo-500/60 disabled:opacity-50 disabled:cursor-not-allowed"
         ${canChangeWordPackBtn ? '' : 'disabled'}>
-        ${escapeHtml(view.room.custom_words_name ?? 'Загрузить пак слов')}
+        ${escapeHtml(view.room.custom_words_name ?? t('word_pack_upload_btn'))}
       </button>
     </div>`
       : ''
@@ -454,13 +455,6 @@ function render() {
     mainEl = document.getElementById('aliasMain')!
   }
 
-  // На экране лобби при повторном render() обновляем только шапку (статус), чтобы не затирать поля ввода
-  if (!view && document.getElementById('roomCode')) {
-    const headerWrap = document.getElementById('aliasHeaderWrap')
-    if (headerWrap) headerWrap.innerHTML = header
-    return
-  }
-
   mainEl.innerHTML = mainContent
   wireHandlers()
 }
@@ -480,19 +474,19 @@ function renderLobbyCard() {
   const codeDisplay = escapeHtml(store.roomCode.trim().toUpperCase() || roomCodeFromUrl || '')
 
   return `
-    <h2 class="text-lg font-semibold">Лобби</h2>
-    <p class="mt-1 text-base text-slate-300">Выберите ник и создайте комнату или войдите по номеру</p>
+    <h2 class="text-lg font-semibold">${t('lobby_title')}</h2>
+    <p class="mt-1 text-base text-slate-300">${t('lobby_subtitle')}</p>
 
     <div class="mt-5 grid gap-3">
       <label class="grid gap-1">
-        <span class="text-base text-slate-300">Ваше имя</span>
-        <input id="playerName" value="${escapeHtml(store.playerName)}" placeholder="Например, Даша" maxlength="${PLAYER_NAME_MAX_LEN}"
+        <span class="text-base text-slate-300">${t('your_name')}</span>
+        <input id="playerName" value="${escapeHtml(store.playerName)}" placeholder="${t('name_placeholder')}" maxlength="${PLAYER_NAME_MAX_LEN}"
           class="rounded-md bg-white/5 px-2.5 py-1.5 text-sm ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500/60" />
       </label>
 
       <label class="grid gap-1">
-        <span class="text-base text-slate-300">Номер (код) комнаты</span>
-        <input id="roomCode" value="${escapeHtml(store.roomCode)}" placeholder="Например, 8K3QZP" maxlength="${ROOM_CODE_MAX_LEN}"
+        <span class="text-base text-slate-300">${t('room_code_label')}</span>
+        <input id="roomCode" value="${escapeHtml(store.roomCode)}" placeholder="${t('room_code_placeholder')}" maxlength="${ROOM_CODE_MAX_LEN}"
           class="rounded-md bg-white/5 px-2.5 py-1.5 text-sm uppercase tracking-widest ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500/60" />
       </label>
 
@@ -500,23 +494,23 @@ function renderLobbyCard() {
         fromUrl && codeDisplay
           ? `
       <div class="mt-1 rounded-md bg-emerald-500/15 p-4 ring-2 ring-emerald-500/40">
-        <p class="text-base font-medium text-emerald-100">Вас пригласили в комнату</p>
+        <p class="text-base font-medium text-emerald-100">${t('invited_to_room')}</p>
         <button id="enterRoom" type="button" class="mt-3 w-full rounded-md bg-emerald-500 px-5 py-3.5 text-lg font-semibold text-emerald-950 hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 focus:ring-offset-slate-900">
-          Войти в комнату /${codeDisplay}
+          ${t('enter_room')} /${codeDisplay}
         </button>
       </div>
       <div class="mt-1">
         <button id="createRoom" class="min-w-[10.5rem] rounded-md bg-white/10 px-4 py-2 text-sm font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/15">
-          Создать свою комнату
+          ${t('create_own_room')}
         </button>
       </div>`
           : `
       <div class="mt-1 grid gap-2 sm:grid-cols-2">
         <button id="createRoom" class="min-w-[10.5rem] rounded-md bg-indigo-500 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-400">
-          Создать комнату
+          ${t('create_room')}
         </button>
         <button id="enterRoom" class="min-w-[10.5rem] rounded-md bg-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-950 hover:bg-emerald-400 disabled:opacity-50" ${store.roomCode.trim() ? '' : 'disabled'}>
-          Войти по коду
+          ${t('enter_by_code')}
         </button>
       </div>`
       }
@@ -524,14 +518,14 @@ function renderLobbyCard() {
       <div id="lobbyRoomCodeRow">${
         store.roomCode
           ? `<div class="flex flex-wrap items-center gap-2 text-base text-slate-400">
-              <span>Комната:</span>
+              <span>${t('room_label')}:</span>
               <button
                 type="button"
                 class="copyRoomCode inline-flex items-center gap-1 font-mono tracking-widest underline decoration-dotted underline-offset-4 hover:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/60 ${store.copiedRoomCode === store.roomCode.trim().toUpperCase() ? 'text-emerald-400' : 'text-slate-200'}"
-                title="Нажмите, чтобы скопировать код комнаты"
+                title="${t('copy_room_code_title')}"
                 data-roomcode="${escapeHtml(store.roomCode)}"
-              >${store.copiedRoomCode === store.roomCode.trim().toUpperCase() ? 'Скопировано ✓' : `/${escapeHtml(store.roomCode)}`}</button>
-              <button id="loadRoom" type="button" class="rounded-md bg-white/10 px-2 py-1 text-sm text-slate-300 hover:bg-white/15">Обновить</button>
+              >${store.copiedRoomCode === store.roomCode.trim().toUpperCase() ? t('copied') : `/${escapeHtml(store.roomCode)}`}</button>
+              <button id="loadRoom" type="button" class="rounded-md bg-white/10 px-2 py-1 text-sm text-slate-300 hover:bg-white/15">${t('refresh')}</button>
             </div>`
           : `<div class="text-base text-slate-400"></div>`
       }</div>
@@ -544,22 +538,19 @@ function renderLobbyCard() {
 
 function renderHelpCard() {
   return `
-    <h2 class="text-lg font-semibold">Правила игры</h2>
+    <h2 class="text-lg font-semibold">${t('rules_title')}</h2>
     <ul class="mt-4 grid gap-2 text-base text-slate-300">
       <li class="rounded-md bg-white/5 px-3 py-2 ring-1 ring-white/10">
-        <span class="font-semibold text-slate-100">Роли.</span> В команде — загадывающий и угадывающие.<br>
-        Загадывающий видит слово и объясняет его без названия.<br>
-        Угадывающие называют слово.
+        <span class="font-semibold text-slate-100">${t('rules_roles')}</span> ${t('rules_roles_desc')}
       </li>
       <li class="rounded-md bg-white/5 px-3 py-2 ring-1 ring-white/10">
-        <span class="font-semibold text-slate-100">Очки.</span> Угадал +1, не знаю 0, пропуск −1.
+        <span class="font-semibold text-slate-100">${t('rules_points')}</span> ${t('rules_points_desc')}
       </li>
       <li class="rounded-md bg-white/5 px-3 py-2 ring-1 ring-white/10">
-        <span class="font-semibold text-slate-100">Победа.</span> По настройкам — либо «первый до N слов», либо «N раундов, у кого больше очков».
+        <span class="font-semibold text-slate-100">${t('rules_win')}</span> ${t('rules_win_desc')}
       </li>
       <li class="rounded-md bg-white/5 px-3 py-2 ring-1 ring-white/10">
-        <span class="font-semibold text-slate-100">Последнее слово.</span> После конца таймера слово угадывающему не показывают.<br>
-        Раунд заканчивается, когда загадывающий отметит его (Угадал / Не знаю / Пропуск).
+        <span class="font-semibold text-slate-100">${t('rules_last_word')}</span> ${t('rules_last_word_desc')}
       </li>
     </ul>
   `
@@ -627,25 +618,25 @@ function renderTopBar(view: WsView) {
   const teamsList = view.room.teams ?? []
   const gameStarted = teamsList.some((t) => t.round_number > 0) && !view.room.game_over
   const teams = teamsList
-    .map((t) => {
-      const winner = view.room.winner_team_id === t.id
-      const playerNames = (t.player_names ?? []).length
-        ? (t.player_names ?? []).map((n) => `<span class="rounded-full bg-white/10 px-2 py-0.5 text-sm text-slate-200 ring-1 ring-white/10">${escapeHtml(n)}</span>`).join('')
-        : '<span class="text-sm text-slate-500">пока никого</span>'
+    .map((teamRow) => {
+      const winner = view.room.winner_team_id === teamRow.id
+      const playerNames = (teamRow.player_names ?? []).length
+        ? (teamRow.player_names ?? []).map((n) => `<span class="rounded-full bg-white/10 px-2 py-0.5 text-sm text-slate-200 ring-1 ring-white/10">${escapeHtml(n)}</span>`).join('')
+        : `<span class="text-sm text-slate-500">${t('spectators_empty')}</span>`
       const base = `
         <div class="min-w-0 flex-1">
-          <div class="truncate text-base font-medium text-slate-100">${escapeHtml(t.name)}</div>
-          <div class="text-base text-slate-400">раунд ${t.round_number}${t.round_active ? ' (идёт)' : ''}</div>
+          <div class="truncate text-base font-medium text-slate-100">${escapeHtml(teamRow.name)}</div>
+          <div class="text-base text-slate-400">${t('round_n', { n: teamRow.round_number })}${teamRow.round_active ? ` ${t('round_active')}` : ''}</div>
           <div class="mt-1.5 flex flex-wrap gap-1">${playerNames}</div>
         </div>
         <div class="ml-auto shrink-0 text-right">
-          <div class="text-base font-semibold ${winner ? 'text-emerald-200' : 'text-slate-100'}">${t.score}</div>
-          <div class="text-base text-slate-400">${t.total_correct} слов</div>
+          <div class="text-base font-semibold ${winner ? 'text-emerald-200' : 'text-slate-100'}">${teamRow.score}</div>
+          <div class="text-base text-slate-400">${teamRow.total_correct} ${t('words_count')}</div>
         </div>`
       if (gameStarted) {
         return `<div class="flex items-start gap-2 rounded-md bg-white/5 px-2.5 py-1.5 ring-1 ring-white/10">${base}</div>`
       }
-      return `<div role="button" tabindex="0" data-teamcode="${escapeHtml(t.code)}" class="joinTeamBtn flex w-full cursor-pointer items-start gap-2 rounded-md bg-white/5 px-2.5 py-1.5 text-left ring-1 ring-white/10 transition-colors hover:bg-white/10 hover:ring-white/20 focus:outline-none focus:ring-2 focus:ring-indigo-500/60" title="Нажмите, чтобы вступить в команду">${base}</div>`
+      return `<div role="button" tabindex="0" data-teamcode="${escapeHtml(teamRow.code)}" class="joinTeamBtn flex w-full cursor-pointer items-start gap-2 rounded-md bg-white/5 px-2.5 py-1.5 text-left ring-1 ring-white/10 transition-colors hover:bg-white/10 hover:ring-white/20 focus:outline-none focus:ring-2 focus:ring-indigo-500/60" title="${t('join_team_title')}">${base}</div>`
     })
     .join('')
 
@@ -653,7 +644,7 @@ function renderTopBar(view: WsView) {
     <div class="mt-10">
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div class="flex items-center gap-2 text-base text-slate-300">
-          <button id="leaveRoom" title="Выйти из комнаты"
+          <button id="leaveRoom" title="${t('leave_room')}"
             class="inline-flex h-8 w-8 items-center justify-center rounded-md bg-rose-500/90 text-white ring-1 ring-rose-500/30 hover:bg-rose-400">
             <svg viewBox="0 0 24 24" class="h-4 w-4" style="transform: scaleX(-1)" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M10 17l5-5-5-5" />
@@ -663,13 +654,13 @@ function renderTopBar(view: WsView) {
             </svg>
           </button>
           <div>
-            Комната
+            ${t('room')}
             <button
               type="button"
               class="copyRoomCode ml-1 inline-flex items-center gap-1 font-mono tracking-widest underline decoration-dotted underline-offset-4 hover:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/60 ${store.copiedRoomCode === view.room.code ? 'text-emerald-400' : 'text-slate-100'}"
-              title="Нажмите, чтобы скопировать код комнаты"
+              title="${t('copy_room_code_title')}"
               data-roomcode="${escapeHtml(view.room.code)}"
-            >${store.copiedRoomCode === view.room.code ? 'Скопировано ✓' : `/${escapeHtml(view.room.code)}`}</button>
+            >${store.copiedRoomCode === view.room.code ? t('copied') : `/${escapeHtml(view.room.code)}`}</button>
           </div>
         </div>
       </div>
@@ -696,7 +687,7 @@ function renderTeamChooser(view: WsView) {
     .join('')
 
   const plus = `
-    <button id="addTeamBtn" title="Создать команду (+) и вступить"
+    <button id="addTeamBtn" title="${t('add_team_btn')}"
       class="inline-flex h-10 w-10 items-center justify-center rounded-md bg-emerald-500 text-xl font-semibold text-emerald-950 hover:bg-emerald-400 disabled:opacity-50"
       ${store.playerId ? '' : 'disabled'}>
       +
@@ -707,11 +698,11 @@ function renderTeamChooser(view: WsView) {
     <div class="mt-4 grid gap-2">
       <div class="text-base text-slate-400">Создайте команды кнопкой “+”. Нажатие “+” сразу присоединяет вас к созданной команде.</div>
       <div class="grid gap-2">
-        ${teamButtons || '<div class="text-base text-slate-300">Пока команд нет.</div>'}
+        ${teamButtons || `<div class="text-base text-slate-300">${t('no_teams_yet')}</div>`}
       </div>
       <div class="mt-1 flex items-center gap-2">
         ${plus}
-        ${teams.length ? '<div class="text-base text-slate-400">…и можно создать следующую</div>' : ''}
+        ${teams.length ? `<div class="text-base text-slate-400">${t('and_create_next')}</div>` : ''}
       </div>
     </div>
   `
@@ -1595,7 +1586,7 @@ appEl.addEventListener('click', async (e) => {
   const code = raw.replace(/^\//, '')
   if (!code) return
   const ok = await copyToClipboard(code)
-  showToast(ok ? 'Код комнаты скопирован' : 'Не удалось скопировать')
+  showToast(ok ? t('room_code_copied') : t('copy_failed'))
   if (ok) {
     if (store.copiedRoomCodeTimerId != null) window.clearTimeout(store.copiedRoomCodeTimerId)
     store.copiedRoomCode = code
@@ -1604,6 +1595,17 @@ appEl.addEventListener('click', async (e) => {
       store.copiedRoomCode = null
       render()
     }, COPIED_ROOM_CODE_DURATION_MS)
+    render()
+  }
+})
+
+// Делегирование: переключатель языка
+appEl.addEventListener('click', (e) => {
+  const btn = (e.target as HTMLElement).closest('.alias-lang-btn') as HTMLButtonElement | null
+  if (!btn) return
+  const locale = btn.dataset.locale as Locale | undefined
+  if (locale === 'ru' || locale === 'uk' || locale === 'en') {
+    setLocale(locale)
     render()
   }
 })
