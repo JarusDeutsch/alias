@@ -8,6 +8,7 @@ const DEFAULT_CONFIG: GameConfig = {
   target_words: 20,
   max_rounds: 10,
   word_pack: 'medium',
+  word_pack_lang: 'ru',
 }
 
 function nowISO(): string {
@@ -352,6 +353,7 @@ export class AliasState implements DurableObject {
     const room = this.state.rooms[roomId]
     const custom = this.roomCustomWords.get(roomId)
     const pack = room.config.word_pack ?? 'medium'
+    const packLang = room.config.word_pack_lang ?? 'ru'
     for (const tid of room.team_ids) {
       const t = this.state.teams[tid]
       if (!t) continue
@@ -359,7 +361,7 @@ export class AliasState implements DurableObject {
         const [, words] = custom
         t.deck = makeDeckFromWords(words, String(t.id), 600)
       } else {
-        t.deck = makeDeck(String(t.id), 600, pack)
+        t.deck = makeDeck(String(t.id), 600, pack, packLang)
       }
     }
   }
@@ -375,9 +377,10 @@ export class AliasState implements DurableObject {
     const id = crypto.randomUUID()
     const custom = this.roomCustomWords.get(roomId)
     const pack = room.config.word_pack ?? 'medium'
+    const packLang = room.config.word_pack_lang ?? 'ru'
     const deck = custom
       ? makeDeckFromWords(custom[1], id, 600)
-      : makeDeck(id, 600, pack)
+      : makeDeck(id, 600, pack, packLang)
     const team: Team = {
       id,
       room_id: roomId,
@@ -556,6 +559,11 @@ export class AliasState implements DurableObject {
     if (config.word_pack != null) {
       this.ensureCanChangeWordPack(roomId)
       room.config.word_pack = config.word_pack
+      if (!this.roomCustomWords.has(roomId)) this.replaceRoomDecks(roomId)
+    }
+    if (config.word_pack_lang != null) {
+      this.ensureCanChangeWordPack(roomId)
+      room.config.word_pack_lang = config.word_pack_lang
       if (!this.roomCustomWords.has(roomId)) this.replaceRoomDecks(roomId)
     }
   }

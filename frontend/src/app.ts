@@ -6,6 +6,7 @@ type GameMode = 'to_words' | 'to_rounds'
 type GuessOutcome = 'correct' | 'dont_know' | 'skip'
 
 type WordPack = 'simple' | 'medium' | 'hard'
+type WordPackLang = 'ru' | 'uk' | 'en'
 
 type GameConfig = {
   mode: GameMode
@@ -13,6 +14,7 @@ type GameConfig = {
   target_words: number
   max_rounds: number
   word_pack?: WordPack
+  word_pack_lang?: WordPackLang
 }
 
 type WordEvent = {
@@ -180,7 +182,7 @@ function escapeHtml(s: string) {
 }
 
 function configKey(c: GameConfig): string {
-  return `${c.mode}|${c.round_seconds}|${c.target_words}|${c.max_rounds}|${c.word_pack ?? 'medium'}`
+  return `${c.mode}|${c.round_seconds}|${c.target_words}|${c.max_rounds}|${c.word_pack ?? 'medium'}|${c.word_pack_lang ?? 'ru'}`
 }
 
 function parseRoomCodeFromUrl(): string | null {
@@ -454,13 +456,8 @@ function render() {
     mainEl = document.getElementById('aliasMain')!
   }
 
-  // На экране лобби при повторном render() обновляем только шапку (статус), чтобы не затирать поля ввода
-  if (!view && document.getElementById('roomCode')) {
-    const headerWrap = document.getElementById('aliasHeaderWrap')
-    if (headerWrap) headerWrap.innerHTML = header
-    return
-  }
-
+  // Всегда перерисовываем контент целиком, чтобы при смене языка обновлялись и лобби, и панели в комнате.
+  // Значения полей ввода берутся из store, поэтому не теряются.
   mainEl.innerHTML = mainContent
   wireHandlers()
 }
@@ -957,6 +954,12 @@ function renderRightPanel(view: WsView) {
             <option value="medium" ${(cfg.word_pack ?? 'medium') === 'medium' ? 'selected' : ''}>${t('word_pack_medium')}</option>
             <option value="hard" ${(cfg.word_pack ?? 'medium') === 'hard' ? 'selected' : ''}>${t('word_pack_hard')}</option>
           </select>
+        </label>
+        <label class="grid gap-1">
+          <span class="text-base text-slate-300">${t('word_pack_lang_label')}</span>
+          <select id="cfgWordPackLang" class="rounded-md bg-white/5 px-3 py-2 text-base ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500/60" ${canSettings && canChangeWordPack ? '' : 'disabled'} title="${!canChangeWordPack ? t('word_pack_locked') : ''}">
+            ${LOCALES.map((loc) => `<option value="${loc.code}" ${(cfg.word_pack_lang ?? 'ru') === loc.code ? 'selected' : ''}>${escapeHtml(loc.native)}</option>`).join('')}
+          </select>
         </label>`
 
   const canRestartInGame = view.me.role === 'cluegiver' && !!view.me.team_id
@@ -1205,7 +1208,9 @@ function updateDraftFromUi() {
   const targetRaw = Number(targetEl.value) || (mode === 'to_words' ? base.target_words : base.max_rounds)
   const targetWords = mode === 'to_words' ? Math.max(CONFIG_TARGET_WORDS_MIN, Math.min(CONFIG_TARGET_WORDS_MAX, targetRaw)) : base.target_words
   const maxRounds = mode === 'to_rounds' ? Math.max(CONFIG_MAX_ROUNDS_MIN, Math.min(CONFIG_MAX_ROUNDS_MAX, targetRaw)) : base.max_rounds
+  const wordPackLangEl = document.getElementById('cfgWordPackLang') as HTMLSelectElement | null
   const word_pack = (wordPackEl?.value as WordPack) ?? (base.word_pack ?? 'medium')
+  const word_pack_lang = (wordPackLangEl?.value as WordPackLang) ?? (base.word_pack_lang ?? 'ru')
 
   store.settingsDraft = {
     mode,
@@ -1213,6 +1218,7 @@ function updateDraftFromUi() {
     target_words: targetWords,
     max_rounds: maxRounds,
     word_pack,
+    word_pack_lang,
   }
   store.settingsDirty = store.view ? configKey(store.settingsDraft) !== configKey(store.view.room.config) : false
   updateTargetLabel(mode)
@@ -1575,8 +1581,10 @@ function wireHandlers() {
     applyDraftSettings()
   }
 
+  const wordPackLangEl = document.getElementById('cfgWordPackLang') as HTMLSelectElement | null
   modeEl?.addEventListener('change', syncDraftAndApply)
   wordPackEl?.addEventListener('change', syncDraftAndApply)
+  wordPackLangEl?.addEventListener('change', syncDraftAndApply)
   roundSecEl?.addEventListener('input', updateDraftFromUi)
   targetEl?.addEventListener('input', updateDraftFromUi)
   roundSecEl?.addEventListener('blur', syncDraftAndApply)

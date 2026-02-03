@@ -59,6 +59,7 @@ class StateStore:
         room = self.state.rooms[room_id]
         custom = self.room_custom_words.get(room_id)
         pack = getattr(room.config.word_pack, "value", room.config.word_pack) if hasattr(room.config, "word_pack") else "medium"
+        pack_lang = getattr(room.config.word_pack_lang, "value", getattr(room.config, "word_pack_lang", "ru")) if hasattr(room.config, "word_pack_lang") else "ru"
         for tid in room.team_ids:
             t = self.state.teams.get(tid)
             if not t:
@@ -67,7 +68,7 @@ class StateStore:
                 _, words = custom
                 t.deck = make_deck_from_words(words, seed=str(t.id), size=600)
             else:
-                t.deck = make_deck(seed=str(t.id), size=600, pack=pack)
+                t.deck = make_deck(seed=str(t.id), size=600, pack=pack, pack_lang=pack_lang)
 
     def create_room(self, name: str) -> Room:
         room_id = uuid4()
@@ -90,7 +91,8 @@ class StateStore:
             deck = make_deck_from_words(words, seed=str(team_id), size=600)
         else:
             pack = getattr(room.config.word_pack, "value", room.config.word_pack) if hasattr(room.config, "word_pack") else "medium"
-            deck = make_deck(seed=str(team_id), size=600, pack=pack)
+            pack_lang = getattr(room.config.word_pack_lang, "value", getattr(room.config, "word_pack_lang", "ru")) if hasattr(room.config, "word_pack_lang") else "ru"
+            deck = make_deck(seed=str(team_id), size=600, pack=pack, pack_lang=pack_lang)
         team = Team(
             id=team_id,
             room_id=room_id,
@@ -275,7 +277,11 @@ class StateStore:
         if hasattr(config, "word_pack") and config.word_pack is not None:
             self._ensure_can_change_word_pack(room_id)
             room.config.word_pack = config.word_pack
-            # Пак слов действует на всю комнату: обновляем колоды у всех команд (если нет своего пакa)
+            if room_id not in self.room_custom_words:
+                self._replace_room_decks(room_id)
+        if hasattr(config, "word_pack_lang") and config.word_pack_lang is not None:
+            self._ensure_can_change_word_pack(room_id)
+            room.config.word_pack_lang = config.word_pack_lang
             if room_id not in self.room_custom_words:
                 self._replace_room_decks(room_id)
 

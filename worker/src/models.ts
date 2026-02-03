@@ -3,6 +3,7 @@
 export type PlayerRole = 'cluegiver' | 'guesser' | 'spectator'
 export type GameMode = 'to_words' | 'to_rounds'
 export type WordPack = 'simple' | 'medium' | 'hard'
+export type WordPackLang = 'ru' | 'uk' | 'en'
 export type GuessOutcome = 'correct' | 'dont_know' | 'skip'
 
 export interface GameConfig {
@@ -11,6 +12,7 @@ export interface GameConfig {
   target_words: number
   max_rounds: number
   word_pack?: WordPack
+  word_pack_lang?: WordPackLang
 }
 
 export interface WordEvent {

@@ -46,6 +46,7 @@ const translations: Record<Locale, Messages> = {
     word_pack_simple: 'Простые',
     word_pack_medium: 'Средние',
     word_pack_hard: 'Сложные',
+    word_pack_lang_label: 'Язык слов',
     // Lobby
     lobby_title: 'Лобби',
     lobby_subtitle: 'Выберите ник и создайте комнату или войдите по номеру',
@@ -194,6 +195,7 @@ const translations: Record<Locale, Messages> = {
     word_pack_simple: 'Прості',
     word_pack_medium: 'Середні',
     word_pack_hard: 'Складні',
+    word_pack_lang_label: 'Мова слів',
     lobby_title: 'Лобі',
     lobby_subtitle: 'Оберіть нік і створіть кімнату або увійдіть за номером',
     your_name: 'Ваше ім\'я',
@@ -332,6 +334,7 @@ const translations: Record<Locale, Messages> = {
     word_pack_simple: 'Simple',
     word_pack_medium: 'Medium',
     word_pack_hard: 'Hard',
+    word_pack_lang_label: 'Language of words',
     lobby_title: 'Lobby',
     lobby_subtitle: 'Choose a nickname and create a room or enter by code',
     your_name: 'Your name',

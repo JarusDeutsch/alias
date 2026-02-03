@@ -25,6 +25,12 @@ class WordPack(str, Enum):
     hard = "hard"      # сложные
 
 
+class WordPackLang(str, Enum):
+    ru = "ru"
+    uk = "uk"
+    en = "en"
+
+
 class GuessOutcome(str, Enum):
     correct = "correct"  # +1 очко, +1 угаданное слово
     dont_know = "dont_know"  # 0 очков
@@ -37,6 +43,7 @@ class GameConfig(BaseModel):
     target_words: int = Field(default=20, ge=1, le=500, description="слов для победы (режим to_words)")
     max_rounds: int = Field(default=10, ge=1, le=100, description="раундов до победы (режим to_rounds)")
     word_pack: WordPack = WordPack.medium
+    word_pack_lang: WordPackLang = WordPackLang.ru
 
 
 class WordEvent(BaseModel):

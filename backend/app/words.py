@@ -68,8 +68,54 @@ SIMPLE_WORDS_RU: List[str] = _load_words_csv("words_simple_500.csv", SIMPLE_WORD
 MEDIUM_WORDS_RU: List[str] = _load_words_csv("words_medium_500.csv", MEDIUM_WORDS_RU_DEFAULT)
 HARD_WORDS_RU: List[str] = _load_words_csv("words_hard_500.csv", HARD_WORDS_RU_DEFAULT)
 
+# Ukrainian (fallback lists; can add words_simple_500_uk.csv etc. later)
+SIMPLE_WORDS_UK: List[str] = [
+    "Дім", "Кіт", "Стіл", "М'яч", "Мама", "Тато", "Сонце", "Вода", "Хліб", "Молоко",
+    "Собака", "Птах", "Риба", "Яблуко", "Книга", "Стілець", "Вікно", "Двері", "Нога", "Рука",
+    "Око", "Ніс", "Рот", "Вухо", "Голова", "Сніг", "Дощ", "Вогонь", "Квітка", "Дерево",
+    "Машина", "Поїзд", "Годинник", "Телефон", "Ложка", "Тарілка", "Чашка", "Ліжко", "Лампа", "Дзеркало",
+]
+MEDIUM_WORDS_UK: List[str] = [
+    "Літак", "Мікрофон", "Олівець", "Сніговик", "Пилосос", "Космонавт", "Бібліотека", "Кавоварка",
+    "Скейтборд", "Телескоп", "Подушка", "Шахи", "Календар", "Компас", "Ліхтарик", "Акваріум",
+    "Термометр", "Вертоліт", "Крокодил", "Рюкзак", "Цукерниця", "Рукавички", "Піаніно", "Світлофор",
+]
+HARD_WORDS_UK: List[str] = [
+    "Абстракція", "Парадокс", "Критерій", "Гіпотеза", "Синтез", "Аналіз", "Контекст", "Аналогія",
+    "Інтуїція", "Принцип", "Концепція", "Парадигма", "Дилема", "Іронія", "Метафора", "Символ",
+]
 
-def _words_for_pack(pack: str) -> List[str]:
+# English
+SIMPLE_WORDS_EN: List[str] = [
+    "House", "Cat", "Table", "Ball", "Mom", "Dad", "Sun", "Water", "Bread", "Milk",
+    "Dog", "Bird", "Fish", "Apple", "Book", "Chair", "Window", "Door", "Leg", "Hand",
+    "Eye", "Nose", "Mouth", "Ear", "Head", "Snow", "Rain", "Fire", "Flower", "Tree",
+    "Car", "Train", "Clock", "Phone", "Spoon", "Plate", "Cup", "Bed", "Lamp", "Mirror",
+]
+MEDIUM_WORDS_EN: List[str] = [
+    "Airplane", "Microphone", "Pencil", "Snowman", "Vacuum", "Astronaut", "Library", "Coffee maker",
+    "Skateboard", "Telescope", "Pillow", "Chess", "Calendar", "Compass", "Flashlight", "Aquarium",
+    "Thermometer", "Helicopter", "Crocodile", "Backpack", "Sugar bowl", "Gloves", "Piano", "Traffic light",
+]
+HARD_WORDS_EN: List[str] = [
+    "Abstraction", "Paradox", "Criterion", "Hypothesis", "Synthesis", "Analysis", "Context", "Analogy",
+    "Intuition", "Principle", "Concept", "Paradigm", "Dilemma", "Irony", "Metaphor", "Symbol",
+]
+
+
+def _words_for_pack(pack: str, pack_lang: str = "ru") -> List[str]:
+    if pack_lang == "uk":
+        if pack == "simple":
+            return list(SIMPLE_WORDS_UK)
+        if pack == "hard":
+            return list(HARD_WORDS_UK)
+        return list(MEDIUM_WORDS_UK)
+    if pack_lang == "en":
+        if pack == "simple":
+            return list(SIMPLE_WORDS_EN)
+        if pack == "hard":
+            return list(HARD_WORDS_EN)
+        return list(MEDIUM_WORDS_EN)
     if pack == "simple":
         return list(SIMPLE_WORDS_RU)
     if pack == "hard":
@@ -77,9 +123,9 @@ def _words_for_pack(pack: str) -> List[str]:
     return list(MEDIUM_WORDS_RU)
 
 
-def make_deck(seed: str, size: int = 200, pack: str = "medium") -> List[str]:
+def make_deck(seed: str, size: int = 200, pack: str = "medium", pack_lang: str = "ru") -> List[str]:
     rng = random.Random(seed)
-    words = _words_for_pack(pack)
+    words = _words_for_pack(pack, pack_lang)
     rng.shuffle(words)
     deck: List[str] = []
     while len(deck) < size:
@@ -94,11 +140,11 @@ def make_deck(seed: str, size: int = 200, pack: str = "medium") -> List[str]:
 def make_deck_from_words(words: List[str], seed: str, size: int = 600) -> List[str]:
     """Build a deck from a custom word list (e.g. from CSV). Repeats/shuffles to reach size."""
     if not words:
-        return make_deck(seed=seed, size=size)
+        return make_deck(seed=seed, size=size, pack="medium", pack_lang="ru")
     rng = random.Random(seed)
     words = [w.strip() for w in words if w and w.strip()]
     if not words:
-        return make_deck(seed=seed, size=size)
+        return make_deck(seed=seed, size=size, pack="medium", pack_lang="ru")
     rng.shuffle(words)
     deck: List[str] = []
     while len(deck) < size:

@@ -29,7 +29,79 @@ const HARD_WORDS_RU = [
   'Критерий', 'Показатель', 'Индикатор', 'Параметр', 'Характеристика', 'Свойство', 'Признак',
 ]
 
-function wordsForPack(pack: string): string[] {
+// Українська
+const SIMPLE_WORDS_UK = [
+  'Дім', 'Кіт', 'Стіл', 'М\'яч', 'Мама', 'Тато', 'Сонце', 'Вода', 'Хліб', 'Молоко',
+  'Собака', 'Птах', 'Риба', 'Яблуко', 'Книга', 'Стілець', 'Вікно', 'Двері', 'Нога', 'Рука',
+  'Око', 'Ніс', 'Рот', 'Вухо', 'Голова', 'Сніг', 'Дощ', 'Вогонь', 'Квітка', 'Дерево',
+  'Машина', 'Поїзд', 'Годинник', 'Телефон', 'Ложка', 'Тарілка', 'Чашка', 'Ліжко', 'Лампа', 'Дзеркало',
+  'Ключ', 'Шапка', 'Плаття', 'Черевик', 'Сумка', 'Окуляри', 'Парасолька', 'Ніж', 'Вилка', 'Олівець',
+  'Папір', 'Фарба', 'Іграшка', 'Кукла', 'Ведмідь', 'Заєць', 'Лисиця', 'Вовк', 'Ведмідь',
+]
+
+const MEDIUM_WORDS_UK = [
+  'Літак', 'Мікрофон', 'Олівець', 'Сніговик', 'Пилосос', 'Космонавт', 'Бібліотека', 'Кавоварка',
+  'Скейтборд', 'Телескоп', 'Подушка', 'Шахи', 'Календар', 'Компас', 'Ліхтарик', 'Акваріум',
+  'Термометр', 'Вертоліт', 'Крокодил', 'Рюкзак', 'Цукерниця', 'Рукавички', 'Піаніно', 'Світлофор',
+  'Парасолька', 'Апельсин', 'Магніт', 'Кошеня', 'Серветка', 'Морозиво', 'Чоботи', 'Кукурудза',
+  'Собака', 'Лавка', 'Робот', 'Пароплав', 'Бутерброд', 'Капуста', 'Телефон', 'Будильник',
+  'Гітара', 'Барабан', 'Вентилятор', 'Глобус', 'Диркопробивач', 'Калькулятор', 'Конверт', 'Лейка',
+  'Молоток', 'Відвертка', 'Плед', 'Свічка', 'Термос', 'Ліхтар', 'Шафа', 'Дзига', 'Якір',
+]
+
+const HARD_WORDS_UK = [
+  'Абстракція', 'Парадокс', 'Критерій', 'Гіпотеза', 'Синтез', 'Аналіз', 'Контекст', 'Аналогія',
+  'Інтуїція', 'Принцип', 'Концепція', 'Парадигма', 'Дилема', 'Іронія', 'Метафора', 'Символ',
+  'Тезис', 'Аргумент', 'Висновок', 'Умова', 'Наслідок', 'Причина', 'Результат', 'Критерій',
+  'Обмеження', 'Виключення', 'Варіант', 'Альтернатива', 'Компроміс', 'Суперечність', 'Нюанс',
+  'Відтінок', 'Підтекст', 'Підхід', 'Метод', 'Стратегія', 'Тактика', 'Ресурс', 'Потенціал',
+  'Динаміка', 'Статика', 'Структура', 'Система', 'Елемент', 'Компонент', 'Фактор', 'Аспект',
+  'Показник', 'Індикатор', 'Параметр', 'Характеристика', 'Властивість', 'Ознака',
+]
+
+// English
+const SIMPLE_WORDS_EN = [
+  'House', 'Cat', 'Table', 'Ball', 'Mom', 'Dad', 'Sun', 'Water', 'Bread', 'Milk',
+  'Dog', 'Bird', 'Fish', 'Apple', 'Book', 'Chair', 'Window', 'Door', 'Leg', 'Hand',
+  'Eye', 'Nose', 'Mouth', 'Ear', 'Head', 'Snow', 'Rain', 'Fire', 'Flower', 'Tree',
+  'Car', 'Train', 'Clock', 'Phone', 'Spoon', 'Plate', 'Cup', 'Bed', 'Lamp', 'Mirror',
+  'Key', 'Hat', 'Dress', 'Shoe', 'Bag', 'Glasses', 'Umbrella', 'Knife', 'Fork', 'Pencil',
+  'Paper', 'Paint', 'Toy', 'Doll', 'Bear', 'Rabbit', 'Fox', 'Wolf', 'Bear',
+]
+
+const MEDIUM_WORDS_EN = [
+  'Airplane', 'Microphone', 'Pencil', 'Snowman', 'Vacuum', 'Astronaut', 'Library', 'Coffee maker',
+  'Skateboard', 'Telescope', 'Pillow', 'Chess', 'Calendar', 'Compass', 'Flashlight', 'Aquarium',
+  'Thermometer', 'Helicopter', 'Crocodile', 'Backpack', 'Sugar bowl', 'Gloves', 'Piano', 'Traffic light',
+  'Umbrella', 'Orange', 'Magnet', 'Kitten', 'Napkin', 'Ice cream', 'Boots', 'Corn',
+  'Dog', 'Bench', 'Robot', 'Steamer', 'Sandwich', 'Cabbage', 'Phone', 'Alarm clock',
+  'Guitar', 'Drum', 'Fan', 'Globe', 'Hole punch', 'Calculator', 'Envelope', 'Watering can',
+  'Hammer', 'Screwdriver', 'Blanket', 'Candle', 'Thermos', 'Lantern', 'Wardrobe', 'Top', 'Anchor',
+]
+
+const HARD_WORDS_EN = [
+  'Abstraction', 'Paradox', 'Criterion', 'Hypothesis', 'Synthesis', 'Analysis', 'Context', 'Analogy',
+  'Intuition', 'Principle', 'Concept', 'Paradigm', 'Dilemma', 'Irony', 'Metaphor', 'Symbol',
+  'Thesis', 'Argument', 'Conclusion', 'Condition', 'Consequence', 'Cause', 'Result', 'Criterion',
+  'Limitation', 'Exception', 'Option', 'Alternative', 'Compromise', 'Contradiction', 'Nuance',
+  'Shade', 'Subtext', 'Approach', 'Method', 'Strategy', 'Tactic', 'Resource', 'Potential',
+  'Dynamics', 'Statics', 'Structure', 'System', 'Element', 'Component', 'Factor', 'Aspect',
+  'Indicator', 'Parameter', 'Characteristic', 'Property', 'Feature',
+]
+
+type WordPackLang = 'ru' | 'uk' | 'en'
+
+function wordsForPack(pack: string, lang: WordPackLang = 'ru'): string[] {
+  if (lang === 'uk') {
+    if (pack === 'simple') return [...SIMPLE_WORDS_UK]
+    if (pack === 'hard') return [...HARD_WORDS_UK]
+    return [...MEDIUM_WORDS_UK]
+  }
+  if (lang === 'en') {
+    if (pack === 'simple') return [...SIMPLE_WORDS_EN]
+    if (pack === 'hard') return [...HARD_WORDS_EN]
+    return [...MEDIUM_WORDS_EN]
+  }
   if (pack === 'simple') return [...SIMPLE_WORDS_RU]
   if (pack === 'hard') return [...HARD_WORDS_RU]
   return [...MEDIUM_WORDS_RU]
@@ -51,8 +123,8 @@ function shuffleWithSeed<T>(arr: T[], seed: string): T[] {
   return out
 }
 
-export function makeDeck(seed: string, size: number = 200, pack: string = 'medium'): string[] {
-  let words = wordsForPack(pack)
+export function makeDeck(seed: string, size: number = 200, pack: string = 'medium', packLang: WordPackLang = 'ru'): string[] {
+  let words = wordsForPack(pack, packLang)
   const deck: string[] = []
   while (deck.length < size) {
     words = shuffleWithSeed(words, seed + deck.length)
@@ -66,7 +138,7 @@ export function makeDeck(seed: string, size: number = 200, pack: string = 'mediu
 
 export function makeDeckFromWords(words: string[], seed: string, size: number = 600): string[] {
   const list = words.filter(w => w && w.trim()).map(w => w.trim())
-  if (list.length === 0) return makeDeck(seed, size)
+  if (list.length === 0) return makeDeck(seed, size, 'medium', 'ru')
   const deck: string[] = []
   while (deck.length < size) {
     const shuffled = shuffleWithSeed(list, seed + deck.length)
