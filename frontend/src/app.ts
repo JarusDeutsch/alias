@@ -1146,6 +1146,11 @@ async function connectWs(force: boolean) {
       if (data.type === 'state') {
         const prevGameOver = store.view?.room?.game_over
         store.view = data.view
+        // После перезапуска игры сервер переводит всех в «Игроки без команды» — синхронизируем store.teamCode
+        if (!data.view.me.team_id) {
+          store.teamCode = ''
+          save()
+        }
         if (store.settingsDraft && configKey(store.settingsDraft) === configKey(data.view.room.config)) store.settingsDirty = false
         if (!store.settingsDirty) store.settingsDraft = data.view.room.config
         if (!prevGameOver && data.view.room.game_over && data.view.room.winner_team_id != null) {
