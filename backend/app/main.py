@@ -153,14 +153,20 @@ class Connections:
         # отправляем каждому игроку персональный view (cluegiver/team/spectator)
         for pid, player in list(store.state.players.items()):
             if player.room_id == room_id and pid in self._by_player:
-                await self.send_state(pid)
+                try:
+                    await self.send_state(pid)
+                except Exception:
+                    pass  # один отвал не должен ломать рассылку остальным
 
     async def broadcast_player_left(self, room_id: UUID, player_name: str, exclude_player_id: Optional[UUID] = None) -> None:
         msg = {"type": "player_left", "player_name": player_name}
         for pid, player in list(store.state.players.items()):
             if pid != exclude_player_id and player.room_id == room_id and pid in self._by_player:
-                ws = self._by_player[pid]
-                await ws.send_json(msg)
+                try:
+                    ws = self._by_player[pid]
+                    await ws.send_json(msg)
+                except Exception:
+                    pass  # один отвал не должен ломать рассылку остальным
 
     async def send_error(self, ws: WebSocket, message: str) -> None:
         await ws.send_json(WsServerError(message=message).model_dump())
@@ -415,16 +421,9 @@ async def ws_endpoint(ws: WebSocket) -> None:
                     if player:
                         room_id = player.room_id
                         player_name = player.name
-                        try:
-                            await connections.broadcast_player_left(room_id, player_name, exclude_player_id=player_id)
-                        except Exception:
-                            pass
+                        await connections.broadcast_player_left(room_id, player_name, exclude_player_id=player_id)
                         store.remove_player(player_id)
-                        connections.disconnect(player_id)
-                        try:
-                            await connections.broadcast_room(room_id)
-                        except Exception:
-                            pass
+                        await connections.broadcast_room(room_id)
                         if room_id is not None:
                             still = [
                                 pid for pid, p in store.state.players.items()
@@ -432,6 +431,7 @@ async def ws_endpoint(ws: WebSocket) -> None:
                             ]
                             if not still:
                                 store.remove_room_custom_words(room_id)
+                        connections.disconnect(player_id)
                     await ws.send_json({"type": "left"})
                     return
                 else:
