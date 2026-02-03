@@ -1421,11 +1421,21 @@ async function restartGame() {
   if (!store.playerId) return
   try {
     setError('rightError', null)
-    await fetchJson<{ ok: boolean }>(`${API_BASE}/api/rooms/${roomCode}/players/${store.playerId}/restart`, { method: 'POST' }, 6000)
-    showToast('Игра перезапущена')
+    const data = await fetchJson<{ ok: boolean; view?: WsView }>(
+      `${API_BASE}/api/rooms/${roomCode}/players/${store.playerId}/restart`,
+      { method: 'POST' },
+      6000,
+    )
+    if (data.view) {
+      store.view = data.view
+      if (store.settingsDraft && configKey(store.settingsDraft) === configKey(data.view.room.config)) store.settingsDirty = false
+      if (!store.settingsDirty) store.settingsDraft = data.view.room.config
+      render()
+    }
+    showToast(t('game_restarted'))
   } catch (e) {
     setError('rightError', apiErrorMessage((e as Error).message))
-    showToast('Не удалось перезапустить')
+    showToast(t('restart_failed'))
   }
 }
 

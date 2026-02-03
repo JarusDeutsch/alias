@@ -122,9 +122,37 @@ npx wrangler deploy
 
 ---
 
+## Свой домен (вы купили домен)
+
+### Подключить домен к сайту (Cloudflare Pages)
+
+1. Зайдите в [dash.cloudflare.com](https://dash.cloudflare.com) → **Workers & Pages** → выберите ваш проект **Pages** (фронтенд).
+2. Откройте вкладку **Custom domains**.
+3. Нажмите **Set up a custom domain** (или **Add custom domain**).
+4. Введите ваш домен, например `alias-game.com` или `www.alias-game.com`.
+5. Следуйте подсказкам Cloudflare:
+   - Если домен уже добавлен в Cloudflare (в **Websites** → ваша зона), часто достаточно нажать **Activate** — записи подставятся сами.
+   - Если домен у другого регистратора: Cloudflare покажет, какую **CNAME**-запись создать (обычно `@` или `www` → указывает на `ваш-проект.pages.dev`). Создайте запись у регистратора и подождите распространения DNS (от нескольких минут до суток).
+6. После активации сайт будет открываться по вашему домену. Переменную **VITE_API_BASE** в Pages не меняйте — она по-прежнему должна указывать на Worker (например `https://alias-api.wadimsergeew190405.workers.dev`), иначе API/WebSocket перестанут работать.
+
+### (Опционально) Домен для API (Worker)
+
+Если хотите, чтобы API тоже был на вашем домене (например `api.yourdomain.com`):
+
+1. В Cloudflare: **Websites** → ваша зона (домен) → **Workers Routes** (или **Workers & Pages** → **Overview** → **Add route**). Добавьте маршрут, например `api.yourdomain.com/*` → Worker `alias-api`.
+2. В проекте в файле `worker/wrangler.toml` раскомментируйте и подставьте ваш домен и зону:
+   ```toml
+   routes = [{ pattern = "api.yourdomain.com", zone_name = "yourdomain.com" }]
+   ```
+3. Задеплойте Worker: `cd worker && npx wrangler deploy`.
+4. В **Pages** в переменной **VITE_API_BASE** укажите новый адрес: `https://api.yourdomain.com` (без слеша в конце), сохраните и сделайте **Retry deployment**.
+
+После этого и сайт, и API будут на вашем домене.
+
+---
+
 ## Дополнительно
 
-- **Свой домен:** в проекте Pages откройте **Custom domains**, добавьте домен и следуйте подсказкам Cloudflare.
 - **Локальная разработка:** `cd frontend && npm run dev` — фронт подключается к `http://localhost:8000` (нужен запущенный Python-бэкенд) или задайте `VITE_API_BASE` для теста против Worker.
 - **Один домен для сайта и API:** можно повесить и Pages, и Worker на один домен (разные пути). Это настраивается в Dashboard (Custom domains, Routes) — при необходимости можно расписать отдельно.
 

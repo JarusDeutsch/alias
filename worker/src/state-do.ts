@@ -297,7 +297,8 @@ export class AliasState implements DurableObject {
         if (!room) return cors(jsonErr('room_not_found', 404))
         this.restartRoom(room.id, playerId!)
         this.broadcastRoom(room.id)
-        return cors(json({ ok: true }))
+        const view = this.viewForPlayer(playerId!)
+        return cors(json({ ok: true, view }))
       }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e)
