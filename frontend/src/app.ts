@@ -569,12 +569,24 @@ function renderGlobalTimer(view: WsView) {
   const team = view.my_team
   const ms = remainingMs(team ?? null)
   const active = ms !== null
-  // скрываем по умолчанию, JS будет обновлять и показывать во время раунда
+  let barStyle = ''
+  let wrapClass = active ? '' : 'hidden '
+  if (active && ms != null) {
+    const totalMs = Math.max(1, (view.room.config?.round_seconds ?? 60) * 1000)
+    const frac = clamp01(ms / totalMs)
+    const pct = frac * 100
+    const [r, g, bl] = colorForFraction(frac)
+    const lighter: [number, number, number] = [Math.min(255, r + 24), Math.min(255, g + 24), Math.min(255, bl + 24)]
+    const darker: [number, number, number] = [Math.max(0, r - 18), Math.max(0, g - 18), Math.max(0, bl - 18)]
+    barStyle = `width:${pct.toFixed(3)}%;background-image:linear-gradient(90deg, rgb(${lighter[0]} ${lighter[1]} ${lighter[2]}), rgb(${darker[0]} ${darker[1]} ${darker[2]}));`
+    if (frac <= 0.1 && frac > 0) wrapClass += 'alias-timer-red '
+  }
+  wrapClass += 'mt-6'
   return `
-    <div id="globalTimerWrap" class="${active ? '' : 'hidden '}mt-6">
+    <div id="globalTimerWrap" class="${wrapClass}">
       <div class="-mx-3">
         <div class="alias-timer-bar-outer h-1.5 w-full overflow-hidden">
-          <div id="globalTimerBarInner" class="alias-timer-bar-inner h-full"></div>
+          <div id="globalTimerBarInner" class="alias-timer-bar-inner h-full" style="${barStyle}"></div>
         </div>
       </div>
       <div class="mt-3 text-center">
