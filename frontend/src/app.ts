@@ -245,7 +245,7 @@ async function fetchJson<T>(url: string, init: RequestInit, timeoutMs = 6000): P
 }
 
 function card(inner: string, cls = '') {
-  return `<div class="rounded-2xl bg-white/5 p-6 ring-1 ring-white/10 backdrop-blur ${cls}">${inner}</div>`
+  return `<div class="rounded-md bg-white/5 p-6 ring-1 ring-white/10 backdrop-blur ${cls}">${inner}</div>`
 }
 
 async function copyToClipboard(text: string): Promise<boolean> {
@@ -392,15 +392,15 @@ function render() {
               ${spectators.length ? spectators.map((n) => `<span class="rounded-full bg-white/10 px-2 py-1 text-base text-slate-200 ring-1 ring-white/10">${escapeHtml(n)}</span>`).join('') : '<span class="text-base text-slate-500">пока никого</span>'}
             </div>`
           if (gameStartedForHeader) {
-            return `<div class="rounded-2xl bg-white/5 p-3 ring-1 ring-white/10 min-w-[160px]">${content}</div>`
+            return `<div class="rounded-md bg-white/5 p-3 ring-1 ring-white/10 min-w-[160px]">${content}</div>`
           }
-          return `<button type="button" class="becomeSpectatorBtn rounded-2xl bg-white/5 p-3 ring-1 ring-white/10 min-w-[160px] text-left hover:bg-white/10 hover:ring-white/20 focus:outline-none focus:ring-2 focus:ring-indigo-500/60 cursor-pointer transition-colors" title="Нажмите, чтобы выйти в игроки без команды">${content}</button>`
+          return `<button type="button" class="becomeSpectatorBtn rounded-md bg-white/5 p-3 ring-1 ring-white/10 min-w-[160px] text-left hover:bg-white/10 hover:ring-white/20 focus:outline-none focus:ring-2 focus:ring-indigo-500/60 cursor-pointer transition-colors" title="Нажмите, чтобы выйти в игроки без команды">${content}</button>`
         })()
       : ''
 
   const reconnectBtn =
     view && store.playerId && !connected && !connecting
-      ? `<button id="reconnectBtn" type="button" class="ml-2 rounded-2xl bg-sky-500/80 px-3 py-1.5 text-sm font-medium text-white hover:bg-sky-400">Переподключиться</button>`
+      ? `<button id="reconnectBtn" type="button" class="ml-2 rounded-md bg-sky-500/80 px-3 py-1.5 text-sm font-medium text-white hover:bg-sky-400">Переподключиться</button>`
       : ''
   const header = `
     <div class="flex items-center justify-between gap-3">
@@ -427,7 +427,7 @@ function render() {
     <div class="fixed bottom-4 right-4 z-40">
       <input type="file" id="wordsCsvInput" accept=".csv" class="hidden" />
       <button type="button" id="uploadWordsBtn" title="${!canChangeWordPackBtn ? 'Пак слов нельзя менять после начала первого раунда до конца игры' : view.room.custom_words_name ? 'Пак слов загружен' : 'Загрузить пак слов из CSV для этой комнаты'}"
-        class="rounded-2xl bg-white/10 px-3 py-2 text-sm font-medium text-slate-200 ring-1 ring-white/10 hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-indigo-500/60 disabled:opacity-50 disabled:cursor-not-allowed"
+        class="rounded-md bg-white/10 px-3 py-2 text-sm font-medium text-slate-200 ring-1 ring-white/10 hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-indigo-500/60 disabled:opacity-50 disabled:cursor-not-allowed"
         ${canChangeWordPackBtn ? '' : 'disabled'}>
         ${escapeHtml(view.room.custom_words_name ?? 'Загрузить пак слов')}
       </button>
@@ -448,8 +448,8 @@ function render() {
   if (!mainEl) {
     appEl.innerHTML = `
     <div id="aliasMain"></div>
-    <div id="aliasToast" class="pointer-events-none fixed bottom-4 left-1/2 z-50 hidden -translate-x-1/2 rounded-2xl bg-slate-950/80 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 backdrop-blur">toast</div>
-    <div id="aliasToastLeave" class="pointer-events-none fixed bottom-4 left-1/2 z-50 hidden -translate-x-1/2 rounded-2xl bg-rose-600/95 px-3 py-1.5 text-sm text-white ring-1 ring-rose-400/30 backdrop-blur">leave</div>
+    <div id="aliasToast" class="pointer-events-none fixed bottom-4 left-1/2 z-50 hidden -translate-x-1/2 rounded-md bg-slate-950/80 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 backdrop-blur">toast</div>
+    <div id="aliasToastLeave" class="pointer-events-none fixed bottom-4 left-1/2 z-50 hidden -translate-x-1/2 rounded-md bg-rose-600/95 px-3 py-1.5 text-sm text-white ring-1 ring-rose-400/30 backdrop-blur">leave</div>
     `
     mainEl = document.getElementById('aliasMain')!
   }
@@ -487,35 +487,35 @@ function renderLobbyCard() {
       <label class="grid gap-1">
         <span class="text-base text-slate-300">Ваше имя</span>
         <input id="playerName" value="${escapeHtml(store.playerName)}" placeholder="Например, Даша" maxlength="${PLAYER_NAME_MAX_LEN}"
-          class="rounded-2xl bg-white/5 px-2.5 py-1.5 text-sm ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500/60" />
+          class="rounded-md bg-white/5 px-2.5 py-1.5 text-sm ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500/60" />
       </label>
 
       <label class="grid gap-1">
         <span class="text-base text-slate-300">Номер (код) комнаты</span>
         <input id="roomCode" value="${escapeHtml(store.roomCode)}" placeholder="Например, 8K3QZP" maxlength="${ROOM_CODE_MAX_LEN}"
-          class="rounded-2xl bg-white/5 px-2.5 py-1.5 text-sm uppercase tracking-widest ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500/60" />
+          class="rounded-md bg-white/5 px-2.5 py-1.5 text-sm uppercase tracking-widest ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500/60" />
       </label>
 
       ${
         fromUrl && codeDisplay
           ? `
-      <div class="mt-1 rounded-2xl bg-emerald-500/15 p-4 ring-2 ring-emerald-500/40">
+      <div class="mt-1 rounded-md bg-emerald-500/15 p-4 ring-2 ring-emerald-500/40">
         <p class="text-base font-medium text-emerald-100">Вас пригласили в комнату</p>
-        <button id="enterRoom" type="button" class="mt-3 w-full rounded-2xl bg-emerald-500 px-5 py-3.5 text-lg font-semibold text-emerald-950 hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 focus:ring-offset-slate-900">
+        <button id="enterRoom" type="button" class="mt-3 w-full rounded-md bg-emerald-500 px-5 py-3.5 text-lg font-semibold text-emerald-950 hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 focus:ring-offset-slate-900">
           Войти в комнату /${codeDisplay}
         </button>
       </div>
       <div class="mt-1">
-        <button id="createRoom" class="min-w-[10.5rem] rounded-2xl bg-white/10 px-4 py-2 text-sm font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/15">
+        <button id="createRoom" class="min-w-[10.5rem] rounded-md bg-white/10 px-4 py-2 text-sm font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/15">
           Создать свою комнату
         </button>
       </div>`
           : `
       <div class="mt-1 grid gap-2 sm:grid-cols-2">
-        <button id="createRoom" class="min-w-[10.5rem] rounded-2xl bg-indigo-500 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-400">
+        <button id="createRoom" class="min-w-[10.5rem] rounded-md bg-indigo-500 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-400">
           Создать комнату
         </button>
-        <button id="enterRoom" class="min-w-[10.5rem] rounded-2xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-950 hover:bg-emerald-400 disabled:opacity-50" ${store.roomCode.trim() ? '' : 'disabled'}>
+        <button id="enterRoom" class="min-w-[10.5rem] rounded-md bg-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-950 hover:bg-emerald-400 disabled:opacity-50" ${store.roomCode.trim() ? '' : 'disabled'}>
           Войти по коду
         </button>
       </div>`
@@ -531,13 +531,13 @@ function renderLobbyCard() {
                 title="Нажмите, чтобы скопировать код комнаты"
                 data-roomcode="${escapeHtml(store.roomCode)}"
               >${store.copiedRoomCode === store.roomCode.trim().toUpperCase() ? 'Скопировано ✓' : `/${escapeHtml(store.roomCode)}`}</button>
-              <button id="loadRoom" type="button" class="rounded-2xl bg-white/10 px-2 py-1 text-sm text-slate-300 hover:bg-white/15">Обновить</button>
+              <button id="loadRoom" type="button" class="rounded-md bg-white/10 px-2 py-1 text-sm text-slate-300 hover:bg-white/15">Обновить</button>
             </div>`
           : `<div class="text-base text-slate-400"></div>`
       }</div>
 
-      ${store.lobbyLoadingMessage ? `<div id="lobbyStatus" class="rounded-2xl bg-white/5 px-3 py-2 text-base text-slate-300 ring-1 ring-white/10 flex items-center gap-2"><span class="alias-spinner"></span><span>${escapeHtml(store.lobbyLoadingMessage)}</span></div>` : '<div id="lobbyStatus" class="hidden rounded-2xl bg-white/5 px-3 py-2 text-base text-slate-300 ring-1 ring-white/10"></div>'}
-      <div id="lobbyError" class="hidden rounded-2xl bg-rose-500/10 px-3 py-2 text-base text-rose-200 ring-1 ring-rose-500/20 mt-2"></div>
+      ${store.lobbyLoadingMessage ? `<div id="lobbyStatus" class="rounded-md bg-white/5 px-3 py-2 text-base text-slate-300 ring-1 ring-white/10 flex items-center gap-2"><span class="alias-spinner"></span><span>${escapeHtml(store.lobbyLoadingMessage)}</span></div>` : '<div id="lobbyStatus" class="hidden rounded-md bg-white/5 px-3 py-2 text-base text-slate-300 ring-1 ring-white/10"></div>'}
+      <div id="lobbyError" class="hidden rounded-md bg-rose-500/10 px-3 py-2 text-base text-rose-200 ring-1 ring-rose-500/20 mt-2"></div>
     </div>
   `
 }
@@ -546,18 +546,18 @@ function renderHelpCard() {
   return `
     <h2 class="text-lg font-semibold">Правила игры</h2>
     <ul class="mt-4 grid gap-2 text-base text-slate-300">
-      <li class="rounded-2xl bg-white/5 px-3 py-2 ring-1 ring-white/10">
+      <li class="rounded-md bg-white/5 px-3 py-2 ring-1 ring-white/10">
         <span class="font-semibold text-slate-100">Роли.</span> В команде — загадывающий и угадывающие.<br>
         Загадывающий видит слово и объясняет его без названия.<br>
         Угадывающие называют слово.
       </li>
-      <li class="rounded-2xl bg-white/5 px-3 py-2 ring-1 ring-white/10">
+      <li class="rounded-md bg-white/5 px-3 py-2 ring-1 ring-white/10">
         <span class="font-semibold text-slate-100">Очки.</span> Угадал +1, не знаю 0, пропуск −1.
       </li>
-      <li class="rounded-2xl bg-white/5 px-3 py-2 ring-1 ring-white/10">
+      <li class="rounded-md bg-white/5 px-3 py-2 ring-1 ring-white/10">
         <span class="font-semibold text-slate-100">Победа.</span> По настройкам — либо «первый до N слов», либо «N раундов, у кого больше очков».
       </li>
-      <li class="rounded-2xl bg-white/5 px-3 py-2 ring-1 ring-white/10">
+      <li class="rounded-md bg-white/5 px-3 py-2 ring-1 ring-white/10">
         <span class="font-semibold text-slate-100">Последнее слово.</span> После конца таймера слово угадывающему не показывают.<br>
         Раунд заканчивается, когда загадывающий отметит его (Угадал / Не знаю / Пропуск).
       </li>
@@ -613,8 +613,8 @@ function renderGameLayout(view: WsView) {
       ${isMobile ? `
       <div class="alias-mobile-tabs min-w-0">
         <div class="flex gap-2 border-b border-white/10 pb-2">
-          <button type="button" class="alias-mobile-tab rounded-2xl px-4 py-2.5 text-sm font-semibold transition-colors ${mobileTab === 'team' ? 'bg-white/15 text-white ring-1 ring-white/20' : 'bg-white/5 text-slate-400 ring-1 ring-white/10 hover:bg-white/10'}" data-tab="team">Команда</button>
-          <button type="button" class="alias-mobile-tab rounded-2xl px-4 py-2.5 text-sm font-semibold transition-colors ${mobileTab === 'controls' ? 'bg-white/15 text-white ring-1 ring-white/20' : 'bg-white/5 text-slate-400 ring-1 ring-white/10 hover:bg-white/10'}" data-tab="controls">Управление</button>
+          <button type="button" class="alias-mobile-tab rounded-md px-4 py-2.5 text-sm font-semibold transition-colors ${mobileTab === 'team' ? 'bg-white/15 text-white ring-1 ring-white/20' : 'bg-white/5 text-slate-400 ring-1 ring-white/10 hover:bg-white/10'}" data-tab="team">Команда</button>
+          <button type="button" class="alias-mobile-tab rounded-md px-4 py-2.5 text-sm font-semibold transition-colors ${mobileTab === 'controls' ? 'bg-white/15 text-white ring-1 ring-white/20' : 'bg-white/5 text-slate-400 ring-1 ring-white/10 hover:bg-white/10'}" data-tab="controls">Управление</button>
         </div>
         <div class="alias-mobile-panel mt-3 min-w-0">${mobileTab === 'team' ? left : right}</div>
       </div>
@@ -643,9 +643,9 @@ function renderTopBar(view: WsView) {
           <div class="text-base text-slate-400">${t.total_correct} слов</div>
         </div>`
       if (gameStarted) {
-        return `<div class="flex items-start gap-2 rounded-2xl bg-white/5 px-2.5 py-1.5 ring-1 ring-white/10">${base}</div>`
+        return `<div class="flex items-start gap-2 rounded-md bg-white/5 px-2.5 py-1.5 ring-1 ring-white/10">${base}</div>`
       }
-      return `<div role="button" tabindex="0" data-teamcode="${escapeHtml(t.code)}" class="joinTeamBtn flex w-full cursor-pointer items-start gap-2 rounded-2xl bg-white/5 px-2.5 py-1.5 text-left ring-1 ring-white/10 transition-colors hover:bg-white/10 hover:ring-white/20 focus:outline-none focus:ring-2 focus:ring-indigo-500/60" title="Нажмите, чтобы вступить в команду">${base}</div>`
+      return `<div role="button" tabindex="0" data-teamcode="${escapeHtml(t.code)}" class="joinTeamBtn flex w-full cursor-pointer items-start gap-2 rounded-md bg-white/5 px-2.5 py-1.5 text-left ring-1 ring-white/10 transition-colors hover:bg-white/10 hover:ring-white/20 focus:outline-none focus:ring-2 focus:ring-indigo-500/60" title="Нажмите, чтобы вступить в команду">${base}</div>`
     })
     .join('')
 
@@ -654,7 +654,7 @@ function renderTopBar(view: WsView) {
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div class="flex items-center gap-2 text-base text-slate-300">
           <button id="leaveRoom" title="Выйти из комнаты"
-            class="inline-flex h-8 w-8 items-center justify-center rounded-2xl bg-rose-500/90 text-white ring-1 ring-rose-500/30 hover:bg-rose-400">
+            class="inline-flex h-8 w-8 items-center justify-center rounded-md bg-rose-500/90 text-white ring-1 ring-rose-500/30 hover:bg-rose-400">
             <svg viewBox="0 0 24 24" class="h-4 w-4" style="transform: scaleX(-1)" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M10 17l5-5-5-5" />
               <path d="M15 12H3" />
@@ -684,8 +684,8 @@ function renderTeamChooser(view: WsView) {
   const teams = view.room.teams ?? []
   const gameStarted = teams.some((t) => t.round_number > 0) && !view.room.game_over
   const teamBtnClass = gameStarted
-    ? 'joinTeamBtn flex items-center justify-between gap-2 rounded-2xl bg-white/5 px-3 py-2 text-base ring-1 ring-white/10 cursor-not-allowed opacity-60'
-    : 'joinTeamBtn flex items-center justify-between gap-2 rounded-2xl bg-white/5 px-3 py-2 text-base ring-1 ring-white/10 hover:bg-white/10 cursor-pointer'
+    ? 'joinTeamBtn flex items-center justify-between gap-2 rounded-md bg-white/5 px-3 py-2 text-base ring-1 ring-white/10 cursor-not-allowed opacity-60'
+    : 'joinTeamBtn flex items-center justify-between gap-2 rounded-md bg-white/5 px-3 py-2 text-base ring-1 ring-white/10 hover:bg-white/10 cursor-pointer'
   const teamButtons = teams
     .map(
       (t) => `<button data-teamcode="${escapeHtml(t.code)}" class="${teamBtnClass}" ${gameStarted ? 'disabled' : ''}>
@@ -697,7 +697,7 @@ function renderTeamChooser(view: WsView) {
 
   const plus = `
     <button id="addTeamBtn" title="Создать команду (+) и вступить"
-      class="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-500 text-xl font-semibold text-emerald-950 hover:bg-emerald-400 disabled:opacity-50"
+      class="inline-flex h-10 w-10 items-center justify-center rounded-md bg-emerald-500 text-xl font-semibold text-emerald-950 hover:bg-emerald-400 disabled:opacity-50"
       ${store.playerId ? '' : 'disabled'}>
       +
     </button>
@@ -727,7 +727,7 @@ function renderMyTeamPanel(view: WsView) {
         </div>
       </div>
       ${renderTeamChooser(view)}
-      <div id="teamError" class="mt-3 hidden rounded-2xl bg-rose-500/10 px-3 py-2 text-base text-rose-200 ring-1 ring-rose-500/20"></div>
+      <div id="teamError" class="mt-3 hidden rounded-md bg-rose-500/10 px-3 py-2 text-base text-rose-200 ring-1 ring-rose-500/20"></div>
     `
   }
 
@@ -744,7 +744,7 @@ function renderMyTeamPanel(view: WsView) {
   const players = team.players
     .map((p) => {
       const isClue = team.cluegiver_id === p.id
-      return `<div class="flex items-center justify-between gap-2 rounded-2xl bg-white/5 px-3 py-2 ring-1 ring-white/10">
+      return `<div class="flex items-center justify-between gap-2 rounded-md bg-white/5 px-3 py-2 ring-1 ring-white/10">
         <div class="min-w-0">
           <div class="truncate text-base font-medium text-slate-100">${escapeHtml(p.name)}</div>
           <div class="text-base text-slate-400">${p.role === 'cluegiver' ? 'загад.' : 'угадыв.'}</div>
@@ -763,7 +763,7 @@ function renderMyTeamPanel(view: WsView) {
     <div class="mt-3 grid gap-2">
       <div class="text-base text-slate-300">Ваша роль: ${roleBadge}</div>
       <button id="toggleRoleBtn" title="${roleDisabled ? 'После старта первого раунда роль менять нельзя' : ''}"
-        class="w-full rounded-2xl bg-white/10 px-3 py-2 text-base font-semibold text-white ring-1 ring-white/10 hover:bg-white/15 disabled:opacity-50"
+        class="w-full rounded-md bg-white/10 px-3 py-2 text-base font-semibold text-white ring-1 ring-white/10 hover:bg-white/15 disabled:opacity-50"
         ${roleDisabled ? 'disabled' : ''}>
         ${isCluegiver ? 'Стать угадывающим' : 'Стать загадывающим'}
       </button>
@@ -772,7 +772,7 @@ function renderMyTeamPanel(view: WsView) {
       <div class="text-base text-slate-400">Игроки</div>
       ${players || '<div class="text-base text-slate-300">Пока никого нет…</div>'}
     </div>
-    <div id="teamError" class="mt-3 hidden rounded-2xl bg-rose-500/10 px-3 py-2 text-base text-rose-200 ring-1 ring-rose-500/20"></div>
+    <div id="teamError" class="mt-3 hidden rounded-md bg-rose-500/10 px-3 py-2 text-base text-rose-200 ring-1 ring-rose-500/20"></div>
   `
 }
 
@@ -788,7 +788,7 @@ function renderCenterPanel(view: WsView) {
         const namesHtml = names.length
           ? names.map((n) => `<span class="rounded-full bg-white/10 px-2 py-0.5 text-sm text-slate-200 ring-1 ring-white/10">${escapeHtml(n)}</span>`).join('')
           : '<span class="text-sm text-slate-500">—</span>'
-        return `<div class="rounded-2xl px-4 py-3 ring-1 ${isWinner ? 'bg-emerald-500/15 ring-emerald-500/30' : 'bg-white/5 ring-white/10'}">
+        return `<div class="rounded-md px-4 py-3 ring-1 ${isWinner ? 'bg-emerald-500/15 ring-emerald-500/30' : 'bg-white/5 ring-white/10'}">
           <div class="flex items-center justify-between gap-4">
             <span class="text-base font-medium ${isWinner ? 'text-emerald-100' : 'text-slate-300'}">${escapeHtml(t.name)}</span>
             <span class="text-lg font-semibold tabular-nums ${isWinner ? 'text-emerald-50' : 'text-slate-200'}">${t.score}</span>
@@ -806,7 +806,7 @@ function renderCenterPanel(view: WsView) {
     }).join('')
     return `
       <div class="alias-game-over-wrap text-base text-slate-300">Игра завершена</div>
-      <div class="alias-game-over-confetti relative mt-3 overflow-hidden rounded-2xl bg-emerald-500/10 py-6 px-5 ring-2 ring-emerald-500/30">
+      <div class="alias-game-over-confetti relative mt-3 overflow-hidden rounded-md bg-emerald-500/10 py-6 px-5 ring-2 ring-emerald-500/30">
         <div class="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">${confettiPieces}</div>
         <div class="relative">
           <div class="text-center text-sm font-medium text-emerald-200/90">Победитель</div>
@@ -816,7 +816,7 @@ function renderCenterPanel(view: WsView) {
       </div>
       ${
         canRestart
-          ? `<button id="restartGame" class="mt-5 w-full rounded-2xl bg-white/10 px-4 py-3 text-base font-semibold text-white ring-1 ring-white/10 hover:bg-white/15 transition-opacity">
+          ? `<button id="restartGame" class="mt-5 w-full rounded-md bg-white/10 px-4 py-3 text-base font-semibold text-white ring-1 ring-white/10 hover:bg-white/15 transition-opacity">
               Перезапустить игру
             </button>`
           : ''
@@ -828,7 +828,7 @@ function renderCenterPanel(view: WsView) {
     return `
       <div class="text-base font-semibold">Игровой экран</div>
       <div class="mt-1 text-base text-slate-300">Выберите команду или создайте её кнопкой “+”.</div>
-      <div class="mt-6 rounded-2xl bg-white/5 p-7 ring-1 ring-white/10">
+      <div class="mt-6 rounded-md bg-white/5 p-7 ring-1 ring-white/10">
         <div class="text-base text-slate-300">Поля угадывания</div>
         <div class="mt-3 text-base text-slate-400">Пока пусто — вы ещё не в команде.</div>
       </div>
@@ -860,24 +860,24 @@ function renderCenterPanel(view: WsView) {
         <div class="text-base text-slate-300">Счёт: <span class="font-semibold text-slate-100">${team.score}</span></div>
       </div>
 
-      <div class="mt-6 rounded-2xl bg-gradient-to-b from-white/12 to-white/5 p-7 ring-1 ring-white/10">
+      <div class="mt-6 rounded-md bg-gradient-to-b from-white/12 to-white/5 p-7 ring-1 ring-white/10">
         <div class="text-base text-slate-300">Текущее слово</div>
         <div class="mt-3 text-center text-5xl font-semibold tracking-tight text-white">${escapeHtml(currentWord)}</div>
       </div>
 
-      <div class="mt-5 alias-outcome-buttons rounded-2xl p-3 ring-1 ring-white/10 ${timeExpired ? 'alias-outcome-buttons-expired' : ''}">
+      <div class="mt-5 alias-outcome-buttons rounded-md p-3 ring-1 ring-white/10 ${timeExpired ? 'alias-outcome-buttons-expired' : ''}">
         <div class="grid gap-3 sm:grid-cols-3">
-          <button id="markCorrect" class="rounded-2xl bg-emerald-500 px-4 py-3 text-base font-semibold text-emerald-950 hover:bg-emerald-400 disabled:opacity-50" ${
+          <button id="markCorrect" class="rounded-md bg-emerald-500 px-4 py-3 text-base font-semibold text-emerald-950 hover:bg-emerald-400 disabled:opacity-50" ${
           team.round_active ? '' : 'disabled'
         } title="Клавиша 1">
             Угадал (+1)
           </button>
-          <button id="markDontKnow" class="rounded-2xl bg-white/10 px-4 py-3 text-base font-semibold text-white ring-1 ring-white/10 hover:bg-white/15 disabled:opacity-50" ${
+          <button id="markDontKnow" class="rounded-md bg-white/10 px-4 py-3 text-base font-semibold text-white ring-1 ring-white/10 hover:bg-white/15 disabled:opacity-50" ${
           team.round_active ? '' : 'disabled'
         } title="Клавиша 2">
             Не знаю (0)
           </button>
-          <button id="markSkip" class="rounded-2xl bg-rose-500/90 px-4 py-3 text-base font-semibold text-white hover:bg-rose-400 disabled:opacity-50" ${
+          <button id="markSkip" class="rounded-md bg-rose-500/90 px-4 py-3 text-base font-semibold text-white hover:bg-rose-400 disabled:opacity-50" ${
           team.round_active ? '' : 'disabled'
         } title="Клавиша 3">
             Пропуск (-1)
@@ -886,11 +886,11 @@ function renderCenterPanel(view: WsView) {
       </div>
       <p class="mt-2 text-center text-sm text-slate-500">Клавиши 1, 2, 3 — быстрые действия</p>
 
-      <div class="mt-4 rounded-2xl bg-white/5 px-3 py-2 text-base text-slate-300 ring-1 ring-white/10">
+      <div class="mt-4 rounded-md bg-white/5 px-3 py-2 text-base text-slate-300 ring-1 ring-white/10">
         Последнее показанное угадывающим: <span class="font-semibold text-slate-100">${escapeHtml(team.last_revealed_word ?? '—')}</span>
       </div>
 
-      <div id="gameError" class="mt-3 hidden rounded-2xl bg-rose-500/10 px-3 py-2 text-base text-rose-200 ring-1 ring-rose-500/20"></div>
+      <div id="gameError" class="mt-3 hidden rounded-md bg-rose-500/10 px-3 py-2 text-base text-rose-200 ring-1 ring-rose-500/20"></div>
     `
   }
 
@@ -899,13 +899,13 @@ function renderCenterPanel(view: WsView) {
     <div class="text-base text-slate-300">Вы — угадывающий</div>
     ${timer}
     ${guesserTimerExpiredHint}
-    <div class="mt-6 rounded-2xl bg-white/5 p-7 ring-1 ring-white/10">
+    <div class="mt-6 rounded-md bg-white/5 p-7 ring-1 ring-white/10">
       <div class="text-base text-slate-300">История слов (текущий раунд)</div>
       <div class="mt-3 max-h-[510px] overflow-y-auto pr-1">
         ${renderRoundHistory(team, true, !team.round_active)}
       </div>
     </div>
-    <div id="gameError" class="mt-3 hidden rounded-2xl bg-rose-500/10 px-3 py-2 text-base text-rose-200 ring-1 ring-rose-500/20"></div>
+    <div id="gameError" class="mt-3 hidden rounded-md bg-rose-500/10 px-3 py-2 text-base text-rose-200 ring-1 ring-rose-500/20"></div>
   `
 }
 
@@ -918,7 +918,7 @@ function renderRightPanel(view: WsView) {
 
   const dice = `
     <button id="randomizeBtn" title="Рандомно распределить игроков по командам и ролям"
-      class="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-white/10 text-white ring-1 ring-white/10 hover:bg-white/15 disabled:opacity-40"
+      class="inline-flex h-9 w-9 items-center justify-center rounded-md bg-white/10 text-white ring-1 ring-white/10 hover:bg-white/15 disabled:opacity-40"
       ${view.room.teams?.length && !gameStarted ? '' : 'disabled'}>
       <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M16 3h5v5" />
@@ -931,7 +931,7 @@ function renderRightPanel(view: WsView) {
   `
 
   const gear = `
-    <button id="toggleSettings" class="rounded-2xl bg-white/10 px-3 py-2 text-base font-semibold text-white ring-1 ring-white/10 hover:bg-white/15">
+    <button id="toggleSettings" class="rounded-md bg-white/10 px-3 py-2 text-base font-semibold text-white ring-1 ring-white/10 hover:bg-white/15">
       <span class="inline-flex items-center gap-2">
         <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" />
@@ -948,12 +948,12 @@ function renderRightPanel(view: WsView) {
     hasCustomPack
       ? `<div class="grid gap-1">
           <span class="text-base text-slate-300">Пак слов</span>
-          <div class="rounded-2xl bg-white/5 px-3 py-2 text-base text-slate-200 ring-1 ring-white/10">Свой: ${escapeHtml(view.room.custom_words_name ?? '')}</div>
+          <div class="rounded-md bg-white/5 px-3 py-2 text-base text-slate-200 ring-1 ring-white/10">Свой: ${escapeHtml(view.room.custom_words_name ?? '')}</div>
         </div>`
       : `
         <label class="grid gap-1">
           <span class="text-base text-slate-300">Пак слов</span>
-          <select id="cfgWordPack" class="rounded-2xl bg-white/5 px-3 py-2 text-base ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500/60" ${canSettings && canChangeWordPack ? '' : 'disabled'} title="${!canChangeWordPack ? 'Пак слов нельзя менять после начала первого раунда до конца игры' : ''}">
+          <select id="cfgWordPack" class="rounded-md bg-white/5 px-3 py-2 text-base ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500/60" ${canSettings && canChangeWordPack ? '' : 'disabled'} title="${!canChangeWordPack ? 'Пак слов нельзя менять после начала первого раунда до конца игры' : ''}">
             <option value="simple" ${(cfg.word_pack ?? 'medium') === 'simple' ? 'selected' : ''}>Простые</option>
             <option value="medium" ${(cfg.word_pack ?? 'medium') === 'medium' ? 'selected' : ''}>Средние</option>
             <option value="hard" ${(cfg.word_pack ?? 'medium') === 'hard' ? 'selected' : ''}>Сложные</option>
@@ -963,7 +963,7 @@ function renderRightPanel(view: WsView) {
   const canRestartInGame = view.me.role === 'cluegiver' && !!view.me.team_id
   const restartInSettingsBtn =
     canRestartInGame
-      ? `<button id="restartGameInSettings" type="button" class="mt-3 w-full rounded-2xl bg-amber-500/20 px-4 py-3 text-base font-semibold text-amber-200 ring-1 ring-amber-500/30 hover:bg-amber-500/30">
+      ? `<button id="restartGameInSettings" type="button" class="mt-3 w-full rounded-md bg-amber-500/20 px-4 py-3 text-base font-semibold text-amber-200 ring-1 ring-amber-500/30 hover:bg-amber-500/30">
           Перезапустить игру
         </button>`
       : ''
@@ -976,7 +976,7 @@ function renderRightPanel(view: WsView) {
 
         <label class="grid gap-1">
           <span class="text-base text-slate-300">Тип победы</span>
-          <select id="cfgMode" class="rounded-2xl bg-white/5 px-3 py-2 text-base ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500/60" ${
+          <select id="cfgMode" class="rounded-md bg-white/5 px-3 py-2 text-base ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500/60" ${
               canSettings ? '' : 'disabled'
             }>
               <option value="to_words" ${cfg.mode === 'to_words' ? 'selected' : ''}>По количеству угаданных слов</option>
@@ -988,12 +988,12 @@ function renderRightPanel(view: WsView) {
           <label class="grid gap-1">
             <span class="text-base text-slate-300">Время раунда (сек)</span>
             <input id="cfgRoundSec" type="number" min="${CONFIG_ROUND_SEC_MIN}" max="${CONFIG_ROUND_SEC_MAX}" value="${cfg.round_seconds}"
-              class="rounded-2xl bg-white/5 px-3 py-2 text-base ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500/60" ${canSettings ? '' : 'disabled'} />
+              class="rounded-md bg-white/5 px-3 py-2 text-base ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500/60" ${canSettings ? '' : 'disabled'} />
           </label>
           <label class="grid gap-1">
             <span id="cfgTargetLabel" class="text-base text-slate-300">${cfg.mode === 'to_words' ? 'Слов для победы' : 'Раундов до победы'}</span>
             <input id="cfgTarget" type="number" min="${cfg.mode === 'to_words' ? CONFIG_TARGET_WORDS_MIN : CONFIG_MAX_ROUNDS_MIN}" max="${cfg.mode === 'to_words' ? CONFIG_TARGET_WORDS_MAX : CONFIG_MAX_ROUNDS_MAX}" value="${cfg.mode === 'to_words' ? cfg.target_words : cfg.max_rounds}"
-              class="rounded-2xl bg-white/5 px-3 py-2 text-base ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500/60" ${canSettings ? '' : 'disabled'} />
+              class="rounded-md bg-white/5 px-3 py-2 text-base ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500/60" ${canSettings ? '' : 'disabled'} />
             </label>
           </div>
         ${restartInSettingsBtn}
@@ -1005,12 +1005,12 @@ function renderRightPanel(view: WsView) {
     view.me.role === 'cluegiver' && view.me.team_id
       ? `
       <div class="mt-4 grid gap-3 sm:grid-cols-2">
-        <button id="startRound" class="rounded-2xl bg-indigo-500 px-4 py-3 text-base font-semibold text-white hover:bg-indigo-400 disabled:opacity-50" ${
+        <button id="startRound" class="rounded-md bg-indigo-500 px-4 py-3 text-base font-semibold text-white hover:bg-indigo-400 disabled:opacity-50" ${
           team && !team.round_active && !view.room.game_over ? '' : 'disabled'
         }>
           Старт раунда
         </button>
-        <button id="endRound" class="rounded-2xl bg-rose-500/90 px-4 py-3 text-base font-semibold text-white hover:bg-rose-400 disabled:opacity-50" ${
+        <button id="endRound" class="rounded-md bg-rose-500/90 px-4 py-3 text-base font-semibold text-white hover:bg-rose-400 disabled:opacity-50" ${
           team && team.round_active && !view.room.game_over && !(remain !== null && remain <= 0 && (team.current_word ?? null)) ? '' : 'disabled'
         } title="${team && remain !== null && remain <= 0 && (team.current_word ?? null) ? 'Сначала отметьте последнее слово (Угадал / Не знаю / Пропуск)' : ''}">
           Завершить раунд
@@ -1021,7 +1021,7 @@ function renderRightPanel(view: WsView) {
 
   const history = team
     ? `
-      <div class="mt-6 rounded-2xl bg-white/5 p-5 ring-1 ring-white/10">
+      <div class="mt-6 rounded-md bg-white/5 p-5 ring-1 ring-white/10">
         <div class="text-base text-slate-300">История слов (текущий раунд)</div>
         <div class="mt-3 max-h-[510px] overflow-y-auto pr-1">
           ${renderRoundHistory(team, true, !team.round_active)}
@@ -1044,7 +1044,7 @@ function renderRightPanel(view: WsView) {
     ${settings}
     ${controls}
     ${history}
-    <div id="rightError" class="mt-3 hidden rounded-2xl bg-rose-500/10 px-3 py-2 text-base text-rose-200 ring-1 ring-rose-500/20"></div>
+    <div id="rightError" class="mt-3 hidden rounded-md bg-rose-500/10 px-3 py-2 text-base text-rose-200 ring-1 ring-rose-500/20"></div>
   `
 }
 
@@ -1072,12 +1072,12 @@ function renderRoundHistory(team: TeamPrivateView, onlyCurrent: boolean, editabl
                 const buttons =
                   editable
                     ? `<div class="flex flex-wrap gap-1" data-round-index="${roundIdx}" data-word-index="${wordIdx}">
-                        <button type="button" class="setWordOutcomeBtn rounded-2xl bg-emerald-500/80 px-2 py-1 text-sm text-white hover:bg-emerald-400" data-outcome="correct">+1</button>
-                        <button type="button" class="setWordOutcomeBtn rounded-2xl bg-white/10 px-2 py-1 text-sm text-slate-200 ring-1 ring-white/10 hover:bg-white/20" data-outcome="dont_know">0</button>
-                        <button type="button" class="setWordOutcomeBtn rounded-2xl bg-rose-500/80 px-2 py-1 text-sm text-white hover:bg-rose-400" data-outcome="skip">−1</button>
+                        <button type="button" class="setWordOutcomeBtn rounded-md bg-emerald-500/80 px-2 py-1 text-sm text-white hover:bg-emerald-400" data-outcome="correct">+1</button>
+                        <button type="button" class="setWordOutcomeBtn rounded-md bg-white/10 px-2 py-1 text-sm text-slate-200 ring-1 ring-white/10 hover:bg-white/20" data-outcome="dont_know">0</button>
+                        <button type="button" class="setWordOutcomeBtn rounded-md bg-rose-500/80 px-2 py-1 text-sm text-white hover:bg-rose-400" data-outcome="skip">−1</button>
                       </div>`
                     : tag
-                return `<li class="flex items-center justify-between gap-3 rounded-2xl bg-white/5 px-3 py-2 ring-1 ring-white/10">
+                return `<li class="flex items-center justify-between gap-3 rounded-md bg-white/5 px-3 py-2 ring-1 ring-white/10">
                   <span class="text-base font-medium text-slate-100">${escapeHtml(e.word)}</span>
                   ${buttons}
                 </li>`
@@ -1459,7 +1459,7 @@ function wireHandlers() {
         ? `<div class="flex flex-wrap items-center gap-2 text-base text-slate-400">
             <span>Комната:</span>
             <button type="button" class="copyRoomCode inline-flex items-center gap-1 font-mono tracking-widest underline decoration-dotted underline-offset-4 hover:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/60 ${isCopied ? 'text-emerald-400' : 'text-slate-200'}" title="Нажмите, чтобы скопировать код комнаты" data-roomcode="${escapeHtml(store.roomCode)}">${isCopied ? 'Скопировано ✓' : `/${escapeHtml(store.roomCode)}`}</button>
-            <button id="loadRoom" type="button" class="rounded-2xl bg-white/10 px-2 py-1 text-sm text-slate-300 hover:bg-white/15">Обновить</button>
+            <button id="loadRoom" type="button" class="rounded-md bg-white/10 px-2 py-1 text-sm text-slate-300 hover:bg-white/15">Обновить</button>
           </div>`
         : `<div class="text-base text-slate-400"></div>`
       document.getElementById('loadRoom')?.addEventListener('click', () => void loadRoomInfo())
