@@ -3,7 +3,7 @@
  * Громкость ~12–15%, короткие тоны.
  */
 
-const MASTER_GAIN = 0.14
+const MASTER_GAIN = 0.22
 
 function getAudioContext(): AudioContext | null {
   if (typeof window === 'undefined') return null
@@ -26,21 +26,29 @@ function playTone(
 ) {
   const audioCtx = getCtx()
   if (!audioCtx) return
-  const gain = (opts?.gain ?? 1) * MASTER_GAIN
-  const type = opts?.type ?? 'sine'
-  const startOffset = opts?.startOffset ?? 0
 
-  const osc = audioCtx.createOscillator()
-  const g = audioCtx.createGain()
-  osc.connect(g)
-  g.connect(audioCtx.destination)
-  osc.type = type
-  osc.frequency.setValueAtTime(frequency, audioCtx.currentTime + startOffset)
-  g.gain.setValueAtTime(0, audioCtx.currentTime + startOffset)
-  g.gain.linearRampToValueAtTime(gain, audioCtx.currentTime + startOffset + 0.02)
-  g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + startOffset + durationMs / 1000)
-  osc.start(audioCtx.currentTime + startOffset)
-  osc.stop(audioCtx.currentTime + startOffset + durationMs / 1000 + 0.05)
+  const run = () => {
+    const gain = (opts?.gain ?? 1) * MASTER_GAIN
+    const type = opts?.type ?? 'sine'
+    const startOffset = opts?.startOffset ?? 0
+    const osc = audioCtx.createOscillator()
+    const g = audioCtx.createGain()
+    osc.connect(g)
+    g.connect(audioCtx.destination)
+    osc.type = type
+    osc.frequency.setValueAtTime(frequency, audioCtx.currentTime + startOffset)
+    g.gain.setValueAtTime(0, audioCtx.currentTime + startOffset)
+    g.gain.linearRampToValueAtTime(gain, audioCtx.currentTime + startOffset + 0.02)
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + startOffset + durationMs / 1000)
+    osc.start(audioCtx.currentTime + startOffset)
+    osc.stop(audioCtx.currentTime + startOffset + durationMs / 1000 + 0.05)
+  }
+
+  if (audioCtx.state === 'suspended') {
+    void audioCtx.resume().then(run)
+  } else {
+    run()
+  }
 }
 
 /** Угадал (+1) — короткий приятный восходящий тон */
