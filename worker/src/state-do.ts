@@ -111,6 +111,22 @@ export class AliasState implements DurableObject {
     }
   }
 
+  private broadcastPlayerLeft(roomId: string, playerName: string, excludePlayerId: string): void {
+    const msg = JSON.stringify({ type: 'player_left', player_name: playerName })
+    for (const [pid, p] of Object.entries(this.state.players)) {
+      if (pid !== excludePlayerId && p.room_id === roomId) {
+        const conn = this.connections.get(pid)
+        if (conn) {
+          try {
+            conn.send(msg)
+          } catch {
+            // ignore
+          }
+        }
+      }
+    }
+  }
+
   private handleWsAction(playerId: string, msg: Record<string, unknown>, ws: WebSocket): void {
     const player = this.state.players[playerId]
     if (!player) return
@@ -139,6 +155,22 @@ export class AliasState implements DurableObject {
           msg.word_index as number,
           msg.outcome as GuessOutcome
         )
+      } else if (type === 'leave_room') {
+        const roomId = player.room_id
+        const playerName = player.name
+        this.broadcastPlayerLeft(roomId, playerName, playerId)
+        this.removePlayerFromTeam(playerId)
+        delete this.state.players[playerId]
+        this.connections.delete(playerId)
+        this.broadcastRoom(roomId)
+        const stillInRoom = Object.values(this.state.players).some(p => p.room_id === roomId)
+        if (!stillInRoom) this.roomCustomWords.delete(roomId)
+        try {
+          ws.send(JSON.stringify({ type: 'left' }))
+        } catch {
+          // ignore
+        }
+        return
       } else {
         this.sendError(ws, 'unknown_message_type')
         return
