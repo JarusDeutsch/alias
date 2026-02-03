@@ -908,11 +908,12 @@ function renderRightPanel(view: WsView) {
     <button id="randomizeBtn" title="Рандомно распределить игроков по командам и ролям"
       class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 text-white ring-1 ring-white/10 hover:bg-white/15 disabled:opacity-40"
       ${view.room.teams?.length && !gameStarted ? '' : 'disabled'}>
-      <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
-        <path d="M8 10h.01" />
-        <path d="M12 12h.01" />
-        <path d="M16 14h.01" />
+      <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M16 3h5v5" />
+        <path d="M4 20L21 3" />
+        <path d="M21 16v5h-5" />
+        <path d="M15 15l6 6" />
+        <path d="M4 4l5 5" />
       </svg>
     </button>
   `
