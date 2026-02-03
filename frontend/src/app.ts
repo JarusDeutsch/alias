@@ -1,4 +1,4 @@
-import { getLocale, type Locale, LOCALES, setLocale, t } from './i18n'
+﻿import { getLocale, type Locale, LOCALES, setLocale, t } from './i18n'
 import { playCorrect, playDontKnow, playLose, playSkip, playWin } from './sounds'
 
 type PlayerRole = 'cluegiver' | 'guesser' | 'spectator'
@@ -604,8 +604,8 @@ function renderGameLayout(view: WsView) {
       ${isMobile ? `
       <div class="alias-mobile-tabs min-w-0">
         <div class="flex gap-2 border-b border-white/10 pb-2">
-          <button type="button" class="alias-mobile-tab rounded-md px-4 py-2.5 text-sm font-semibold transition-colors ${mobileTab === 'team' ? 'bg-white/15 text-white ring-1 ring-white/20' : 'bg-white/5 text-slate-400 ring-1 ring-white/10 hover:bg-white/10'}" data-tab="team">Команда</button>
-          <button type="button" class="alias-mobile-tab rounded-md px-4 py-2.5 text-sm font-semibold transition-colors ${mobileTab === 'controls' ? 'bg-white/15 text-white ring-1 ring-white/20' : 'bg-white/5 text-slate-400 ring-1 ring-white/10 hover:bg-white/10'}" data-tab="controls">Управление</button>
+          <button type="button" class="alias-mobile-tab rounded-md px-4 py-2.5 text-sm font-semibold transition-colors ${mobileTab === 'team' ? 'bg-white/15 text-white ring-1 ring-white/20' : 'bg-white/5 text-slate-400 ring-1 ring-white/10 hover:bg-white/10'}" data-tab="team">${t('tab_team')}</button>
+          <button type="button" class="alias-mobile-tab rounded-md px-4 py-2.5 text-sm font-semibold transition-colors ${mobileTab === 'controls' ? 'bg-white/15 text-white ring-1 ring-white/20' : 'bg-white/5 text-slate-400 ring-1 ring-white/10 hover:bg-white/10'}" data-tab="controls">${t('tab_controls')}</button>
         </div>
         <div class="alias-mobile-panel mt-3 min-w-0">${mobileTab === 'team' ? left : right}</div>
       </div>
@@ -696,7 +696,7 @@ function renderTeamChooser(view: WsView) {
 
   return `
     <div class="mt-4 grid gap-2">
-      <div class="text-base text-slate-400">Создайте команды кнопкой “+”. Нажатие “+” сразу присоединяет вас к созданной команде.</div>
+      <div class="text-base text-slate-400">${t('teams_create_hint')}</div>
       <div class="grid gap-2">
         ${teamButtons || `<div class="text-base text-slate-300">${t('no_teams_yet')}</div>`}
       </div>
@@ -713,8 +713,8 @@ function renderMyTeamPanel(view: WsView) {
     return `
       <div class="flex items-start justify-between gap-2">
         <div>
-          <div class="text-base font-semibold">Команды</div>
-          <div class="mt-1 text-base text-slate-400">Вы в комнате, но пока без команды.</div>
+          <div class="text-base font-semibold">${t('teams')}</div>
+          <div class="mt-1 text-base text-slate-400">${t('in_room_no_team')}</div>
         </div>
       </div>
       ${renderTeamChooser(view)}
@@ -723,14 +723,16 @@ function renderMyTeamPanel(view: WsView) {
   }
 
   const team = view.my_team
-  if (!team) return `<div class="text-base text-slate-300">Нет команды</div>`
+  if (!team) return `<div class="text-base text-slate-300">${t('no_team')}</div>`
 
   const isCluegiver = view.me.role === 'cluegiver' && team.cluegiver_id === view.me.id
   const gameStarted = (view.room.teams ?? []).some((t) => t.round_number > 0) && !view.room.game_over
   const roleDisabled = gameStarted
+  const roleClueLabel = t('role_clue')
+  const roleGuessLabel = t('role_guess')
   const roleBadge = isCluegiver
-    ? '<span class="rounded-full bg-indigo-500/20 px-2 py-1 text-base text-indigo-200 ring-1 ring-indigo-500/30">загад.</span>'
-    : '<span class="rounded-full bg-white/10 px-2 py-1 text-base text-slate-200 ring-1 ring-white/10">угадыв.</span>'
+    ? `<span class="rounded-full bg-indigo-500/20 px-2 py-1 text-base text-indigo-200 ring-1 ring-indigo-500/30">${escapeHtml(roleClueLabel)}</span>`
+    : `<span class="rounded-full bg-white/10 px-2 py-1 text-base text-slate-200 ring-1 ring-white/10">${escapeHtml(roleGuessLabel)}</span>`
 
   const players = team.players
     .map((p) => {
@@ -738,9 +740,9 @@ function renderMyTeamPanel(view: WsView) {
       return `<div class="flex items-center justify-between gap-2 rounded-md bg-white/5 px-3 py-2 ring-1 ring-white/10">
         <div class="min-w-0">
           <div class="truncate text-base font-medium text-slate-100">${escapeHtml(p.name)}</div>
-          <div class="text-base text-slate-400">${p.role === 'cluegiver' ? 'загад.' : 'угадыв.'}</div>
+          <div class="text-base text-slate-400">${p.role === 'cluegiver' ? roleClueLabel : roleGuessLabel}</div>
         </div>
-        ${isClue ? '<span class="shrink-0 rounded-full bg-indigo-500/20 px-2 py-1 text-base text-indigo-200 ring-1 ring-indigo-500/30">загад.</span>' : ''}
+        ${isClue ? `<span class="shrink-0 rounded-full bg-indigo-500/20 px-2 py-1 text-base text-indigo-200 ring-1 ring-indigo-500/30">${escapeHtml(roleClueLabel)}</span>` : ''}
       </div>`
     })
     .join('')
@@ -752,16 +754,16 @@ function renderMyTeamPanel(view: WsView) {
       </div>
     </div>
     <div class="mt-3 grid gap-2">
-      <div class="text-base text-slate-300">Ваша роль: ${roleBadge}</div>
-      <button id="toggleRoleBtn" title="${roleDisabled ? 'После старта первого раунда роль менять нельзя' : ''}"
+      <div class="text-base text-slate-300">${t('your_role')} ${roleBadge}</div>
+      <button id="toggleRoleBtn" title="${roleDisabled ? t('role_locked') : ''}"
         class="w-full rounded-md bg-white/10 px-3 py-2 text-base font-semibold text-white ring-1 ring-white/10 hover:bg-white/15 disabled:opacity-50"
         ${roleDisabled ? 'disabled' : ''}>
-        ${isCluegiver ? 'Стать угадывающим' : 'Стать загадывающим'}
+        ${isCluegiver ? t('become_guesser') : t('become_cluegiver')}
       </button>
     </div>
     <div class="mt-4 grid gap-2">
-      <div class="text-base text-slate-400">Игроки</div>
-      ${players || '<div class="text-base text-slate-300">Пока никого нет…</div>'}
+      <div class="text-base text-slate-400">${t('players')}</div>
+      ${players || `<div class="text-base text-slate-300">${t('no_players_yet')}</div>`}
     </div>
     <div id="teamError" class="mt-3 hidden rounded-md bg-rose-500/10 px-3 py-2 text-base text-rose-200 ring-1 ring-rose-500/20"></div>
   `
@@ -796,11 +798,11 @@ function renderCenterPanel(view: WsView) {
       return `<span class="alias-confetti-piece absolute h-2 w-1 rounded-full opacity-90 ${color}" style="left:${left}%; animation-delay:${delay}s"></span>`
     }).join('')
     return `
-      <div class="alias-game-over-wrap text-base text-slate-300">Игра завершена</div>
+      <div class="alias-game-over-wrap text-base text-slate-300">${t('game_over')}</div>
       <div class="alias-game-over-confetti relative mt-3 overflow-hidden rounded-md bg-emerald-500/10 py-6 px-5 ring-2 ring-emerald-500/30">
         <div class="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">${confettiPieces}</div>
         <div class="relative">
-          <div class="text-center text-sm font-medium text-emerald-200/90">Победитель</div>
+          <div class="text-center text-sm font-medium text-emerald-200/90">${t('winner')}</div>
           <div class="alias-game-over-winner mt-2 text-center text-4xl font-bold tracking-tight text-emerald-50 drop-shadow-[0_0_20px_rgba(16,185,129,0.4)] sm:text-5xl">${escapeHtml(winner?.name ?? '—')}</div>
           <div class="mt-5 grid gap-2">${teamsList}</div>
         </div>
@@ -808,7 +810,7 @@ function renderCenterPanel(view: WsView) {
       ${
         canRestart
           ? `<button id="restartGame" class="mt-5 w-full rounded-md bg-white/10 px-4 py-3 text-base font-semibold text-white ring-1 ring-white/10 hover:bg-white/15 transition-opacity">
-              Перезапустить игру
+              ${t('restart_game')}
             </button>`
           : ''
       }
@@ -817,42 +819,42 @@ function renderCenterPanel(view: WsView) {
 
   if (!view.me.team_id) {
     return `
-      <div class="text-base font-semibold">Игровой экран</div>
-      <div class="mt-1 text-base text-slate-300">Выберите команду или создайте её кнопкой “+”.</div>
+      <div class="text-base font-semibold">${t('game_screen')}</div>
+      <div class="mt-1 text-base text-slate-300">${t('choose_team_or_create')}</div>
       <div class="mt-6 rounded-md bg-white/5 p-7 ring-1 ring-white/10">
-        <div class="text-base text-slate-300">Поля угадывания</div>
-        <div class="mt-3 text-base text-slate-400">Пока пусто — вы ещё не в команде.</div>
+        <div class="text-base text-slate-300">${t('guess_fields')}</div>
+        <div class="mt-3 text-base text-slate-400">${t('empty_not_in_team')}</div>
       </div>
     `
   }
 
   const team = view.my_team
-  if (!team) return `<div class="text-base text-slate-300">Нет данных команды</div>`
+  if (!team) return `<div class="text-base text-slate-300">${t('no_team_data')}</div>`
 
   const remain = remainingSeconds(team)
   const timeExpired = remain !== null && remain <= 0
   const timer =
     remain === null
-      ? `<div class="text-base text-slate-400">Раунд не идёт</div>`
-      : `<div class="text-base text-slate-300">Раунд ${team.round_number} • осталось <span id="roundTimerValue" class="font-semibold text-slate-100">${remain}s</span></div>`
+      ? `<div class="text-base text-slate-400">${t('round_not_active')}</div>`
+      : `<div class="text-base text-slate-300">${t('round_remaining', { n: team.round_number })} <span id="roundTimerValue" class="font-semibold text-slate-100">${remain}s</span>${t('time_left_suffix') ? ' ' + t('time_left_suffix') : ''}</div>`
 
   const isCluegiver = view.me.role === 'cluegiver' && team.cluegiver_id === view.me.id
 
   if (isCluegiver) {
     const currentWord = team.current_word ?? '…'
-    const lastWordHint = timeExpired ? '<div class="mt-2 text-base text-amber-200/90">Время вышло. Отметьте последнее слово (Угадал / Не знаю / Пропуск).</div>' : ''
+    const lastWordHint = timeExpired ? `<div class="mt-2 text-base text-amber-200/90">${t('time_up_mark_last')}</div>` : ''
     return `
       <div class="flex items-center justify-between gap-3">
         <div>
-          <div class="text-base text-slate-300">Вы — загадывающий</div>
+          <div class="text-base text-slate-300">${t('you_cluegiver')}</div>
           ${timer}
           ${lastWordHint}
         </div>
-        <div class="text-base text-slate-300">Счёт: <span class="font-semibold text-slate-100">${team.score}</span></div>
+        <div class="text-base text-slate-300">${t('score')}: <span class="font-semibold text-slate-100">${team.score}</span></div>
       </div>
 
       <div class="mt-6 rounded-xl bg-gradient-to-br from-amber-950/30 via-slate-700/25 to-slate-800/40 p-5 ring-1 ring-white/10 flex flex-col min-h-[140px] sm:min-h-[180px]">
-        <div class="text-xs font-medium uppercase tracking-[0.18em] text-slate-400">Текущее слово</div>
+        <div class="text-xs font-medium uppercase tracking-[0.18em] text-slate-400">${t('current_word')}</div>
         <div class="mt-2 flex flex-1 items-center justify-center">
           <div class="text-center text-4xl sm:text-5xl font-semibold tracking-tight text-white">${escapeHtml(currentWord)}</div>
         </div>
@@ -862,38 +864,38 @@ function renderCenterPanel(view: WsView) {
         <div class="grid gap-3 sm:grid-cols-3">
           <button id="markCorrect" class="rounded-md bg-emerald-500 px-4 py-3 text-base font-semibold text-emerald-950 hover:bg-emerald-400 disabled:opacity-50" ${
           team.round_active ? '' : 'disabled'
-        } title="Клавиша 1">
-            Угадал (+1)
+        } title="${t('key_1')}">
+            ${t('mark_correct')}
           </button>
           <button id="markDontKnow" class="rounded-md bg-white/10 px-4 py-3 text-base font-semibold text-white ring-1 ring-white/10 hover:bg-white/15 disabled:opacity-50" ${
           team.round_active ? '' : 'disabled'
-        } title="Клавиша 2">
-            Не знаю (0)
+        } title="${t('key_2')}">
+            ${t('mark_dont_know')}
           </button>
           <button id="markSkip" class="rounded-md bg-rose-500/90 px-4 py-3 text-base font-semibold text-white hover:bg-rose-400 disabled:opacity-50" ${
           team.round_active ? '' : 'disabled'
-        } title="Клавиша 3">
-            Пропуск (-1)
+        } title="${t('key_3')}">
+            ${t('mark_skip')}
           </button>
         </div>
       </div>
-      <p class="mt-2 text-center text-sm text-slate-500">Клавиши 1, 2, 3 — быстрые действия</p>
+      <p class="mt-2 text-center text-sm text-slate-500">${t('hotkeys_hint')}</p>
 
       <div class="mt-4 rounded-md bg-white/5 px-3 py-2 text-base text-slate-300 ring-1 ring-white/10">
-        Последнее показанное угадывающим: <span class="font-semibold text-slate-100">${escapeHtml(team.last_revealed_word ?? '—')}</span>
+        ${t('last_revealed')}: <span class="font-semibold text-slate-100">${escapeHtml(team.last_revealed_word ?? '—')}</span>
       </div>
 
       <div id="gameError" class="mt-3 hidden rounded-md bg-rose-500/10 px-3 py-2 text-base text-rose-200 ring-1 ring-rose-500/20"></div>
     `
   }
 
-  const guesserTimerExpiredHint = timeExpired ? '<div class="mt-2 text-base text-amber-200/90">Время вышло. Ожидайте отметки последнего слова загадывающим.</div>' : ''
+  const guesserTimerExpiredHint = timeExpired ? `<div class="mt-2 text-base text-amber-200/90">${t('time_up_wait_clue')}</div>` : ''
   return `
-    <div class="text-base text-slate-300">Вы — угадывающий</div>
+    <div class="text-base text-slate-300">${t('you_guesser')}</div>
     ${timer}
     ${guesserTimerExpiredHint}
     <div class="mt-6 rounded-md bg-white/5 p-7 ring-1 ring-white/10">
-      <div class="text-base text-slate-300">История слов (текущий раунд)</div>
+      <div class="text-base text-slate-300">${t('word_history')}</div>
       <div class="mt-3 max-h-[510px] overflow-y-auto pr-1">
         ${renderRoundHistory(team, true, !team.round_active)}
       </div>
@@ -910,7 +912,7 @@ function renderRightPanel(view: WsView) {
   const gameStarted = (view.room.teams ?? []).some((t) => t.round_number > 0) && !view.room.game_over
 
   const dice = `
-    <button id="randomizeBtn" title="Рандомно распределить игроков по командам и ролям"
+    <button id="randomizeBtn" title="${t('randomize_teams')}"
       class="inline-flex h-9 w-9 items-center justify-center rounded-md bg-white/10 text-white ring-1 ring-white/10 hover:bg-white/15 disabled:opacity-40"
       ${view.room.teams?.length && !gameStarted ? '' : 'disabled'}>
       <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -930,7 +932,7 @@ function renderRightPanel(view: WsView) {
           <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" />
           <path d="M19.4 15a7.97 7.97 0 0 0 .1-1 7.97 7.97 0 0 0-.1-1l2.1-1.6-2-3.4-2.5 1a7.6 7.6 0 0 0-1.7-1L13 2h-4l-.4 2.9a7.6 7.6 0 0 0-1.7 1l-2.5-1-2 3.4L4.6 11a7.97 7.97 0 0 0-.1 1 7.97 7.97 0 0 0 .1 1L2.5 14.6l2 3.4 2.5-1a7.6 7.6 0 0 0 1.7 1L9 22h4l.4-2.9a7.6 7.6 0 0 0 1.7-1l2.5 1 2-3.4L19.4 15Z" />
         </svg>
-        Настройки
+        ${t('settings')}
       </span>
     </button>
   `
@@ -940,16 +942,16 @@ function renderRightPanel(view: WsView) {
   const wordPackSelect =
     hasCustomPack
       ? `<div class="grid gap-1">
-          <span class="text-base text-slate-300">Пак слов</span>
+          <span class="text-base text-slate-300">${t('word_pack_label')}</span>
           <div class="rounded-md bg-white/5 px-3 py-2 text-base text-slate-200 ring-1 ring-white/10">Свой: ${escapeHtml(view.room.custom_words_name ?? '')}</div>
         </div>`
       : `
         <label class="grid gap-1">
-          <span class="text-base text-slate-300">Пак слов</span>
-          <select id="cfgWordPack" class="rounded-md bg-white/5 px-3 py-2 text-base ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500/60" ${canSettings && canChangeWordPack ? '' : 'disabled'} title="${!canChangeWordPack ? 'Пак слов нельзя менять после начала первого раунда до конца игры' : ''}">
-            <option value="simple" ${(cfg.word_pack ?? 'medium') === 'simple' ? 'selected' : ''}>Простые</option>
-            <option value="medium" ${(cfg.word_pack ?? 'medium') === 'medium' ? 'selected' : ''}>Средние</option>
-            <option value="hard" ${(cfg.word_pack ?? 'medium') === 'hard' ? 'selected' : ''}>Сложные</option>
+          <span class="text-base text-slate-300">${t('word_pack_label')}</span>
+          <select id="cfgWordPack" class="rounded-md bg-white/5 px-3 py-2 text-base ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500/60" ${canSettings && canChangeWordPack ? '' : 'disabled'} title="${!canChangeWordPack ? t('word_pack_locked') : ''}">
+            <option value="simple" ${(cfg.word_pack ?? 'medium') === 'simple' ? 'selected' : ''}>${t('word_pack_simple')}</option>
+            <option value="medium" ${(cfg.word_pack ?? 'medium') === 'medium' ? 'selected' : ''}>${t('word_pack_medium')}</option>
+            <option value="hard" ${(cfg.word_pack ?? 'medium') === 'hard' ? 'selected' : ''}>${t('word_pack_hard')}</option>
           </select>
         </label>`
 
@@ -967,7 +969,7 @@ function renderRightPanel(view: WsView) {
   const restartInSettingsBtn =
     canRestartInGame
       ? `<button id="restartGameInSettings" type="button" class="mt-3 w-full rounded-md bg-amber-500/20 px-4 py-3 text-base font-semibold text-amber-200 ring-1 ring-amber-500/30 hover:bg-amber-500/30">
-          Перезапустить игру
+          ${t('restart_game')}
         </button>`
       : ''
 
@@ -979,7 +981,7 @@ function renderRightPanel(view: WsView) {
         ${wordPackLangSelect}
 
         <label class="grid gap-1">
-          <span class="text-base text-slate-300">Тип победы</span>
+          <span class="text-base text-slate-300">${t('win_type')}</span>
           <select id="cfgMode" class="rounded-md bg-white/5 px-3 py-2 text-base ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500/60" ${
               canSettings ? '' : 'disabled'
             }>
@@ -990,12 +992,12 @@ function renderRightPanel(view: WsView) {
 
         <div class="grid gap-3 sm:grid-cols-2">
           <label class="grid gap-1">
-            <span class="text-base text-slate-300">Время раунда (сек)</span>
+            <span class="text-base text-slate-300">${t('round_seconds')}</span>
             <input id="cfgRoundSec" type="number" min="${CONFIG_ROUND_SEC_MIN}" max="${CONFIG_ROUND_SEC_MAX}" value="${cfg.round_seconds}"
               class="rounded-md bg-white/5 px-3 py-2 text-base ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500/60" ${canSettings ? '' : 'disabled'} />
           </label>
           <label class="grid gap-1">
-            <span id="cfgTargetLabel" class="text-base text-slate-300">${cfg.mode === 'to_words' ? 'Слов для победы' : 'Раундов до победы'}</span>
+            <span id="cfgTargetLabel" class="text-base text-slate-300">${cfg.mode === 'to_words' ? t('words_to_win') : t('rounds_to_win')}</span>
             <input id="cfgTarget" type="number" min="${cfg.mode === 'to_words' ? CONFIG_TARGET_WORDS_MIN : CONFIG_MAX_ROUNDS_MIN}" max="${cfg.mode === 'to_words' ? CONFIG_TARGET_WORDS_MAX : CONFIG_MAX_ROUNDS_MAX}" value="${cfg.mode === 'to_words' ? cfg.target_words : cfg.max_rounds}"
               class="rounded-md bg-white/5 px-3 py-2 text-base ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500/60" ${canSettings ? '' : 'disabled'} />
             </label>
@@ -1012,12 +1014,12 @@ function renderRightPanel(view: WsView) {
         <button id="startRound" class="rounded-md bg-indigo-500 px-4 py-3 text-base font-semibold text-white hover:bg-indigo-400 disabled:opacity-50" ${
           team && !team.round_active && !view.room.game_over ? '' : 'disabled'
         }>
-          Старт раунда
+          ${t('start_round')}
         </button>
         <button id="endRound" class="rounded-md bg-rose-500/90 px-4 py-3 text-base font-semibold text-white hover:bg-rose-400 disabled:opacity-50" ${
           team && team.round_active && !view.room.game_over && !(remain !== null && remain <= 0 && (team.current_word ?? null)) ? '' : 'disabled'
-        } title="${team && remain !== null && remain <= 0 && (team.current_word ?? null) ? 'Сначала отметьте последнее слово (Угадал / Не знаю / Пропуск)' : ''}">
-          Завершить раунд
+        } title="${team && remain !== null && remain <= 0 && (team.current_word ?? null) ? t('end_round_mark_first') : ''}">
+          ${t('end_round')}
         </button>
       </div>
       `
@@ -1026,7 +1028,7 @@ function renderRightPanel(view: WsView) {
   const history = team
     ? `
       <div class="mt-6 rounded-md bg-white/5 p-5 ring-1 ring-white/10">
-        <div class="text-base text-slate-300">История слов (текущий раунд)</div>
+        <div class="text-base text-slate-300">${t('word_history')}</div>
         <div class="mt-3 max-h-[510px] overflow-y-auto pr-1">
           ${renderRoundHistory(team, true, !team.round_active)}
         </div>
@@ -1037,8 +1039,8 @@ function renderRightPanel(view: WsView) {
   return `
     <div class="flex items-start justify-between gap-3">
       <div>
-        <div class="text-base font-semibold">Управление</div>
-        ${remain === null ? '' : `<div class="mt-1 text-base text-slate-400">Таймер: <span id="roundTimerValue2">${remain}s</span></div>`}
+        <div class="text-base font-semibold">${t('controls')}</div>
+        ${remain === null ? '' : `<div class="mt-1 text-base text-slate-400">${t('timer')}: <span id="roundTimerValue2">${remain}s</span></div>`}
       </div>
       <div class="flex items-center gap-2">
         ${dice}
@@ -1160,7 +1162,7 @@ async function connectWs(force: boolean) {
         const err = data as WsError
         const msg =
           err.message === 'cannot_change_word_pack_after_game_started'
-            ? 'Пак слов нельзя менять после начала первого раунда до конца игры'
+            ? t('cannot_change_word_pack')
             : err.message
         setError('rightError', msg)
       }
@@ -1194,7 +1196,7 @@ async function connectWs(force: boolean) {
 function updateTargetLabel(mode: GameMode) {
   const el = document.getElementById('cfgTargetLabel')
   if (!el) return
-  el.textContent = mode === 'to_words' ? 'Слов для победы' : 'Раундов до победы'
+  el.textContent = mode === 'to_words' ? t('words_to_win') : t('rounds_to_win')
 }
 
 function updateDraftFromUi() {
@@ -1233,7 +1235,7 @@ function applyDraftSettings() {
   store.settingsDirty = configKey(store.settingsDraft) !== configKey(store.view.room.config)
   if (!store.settingsDirty) return
   sendWs({ type: 'update_settings', config: store.settingsDraft })
-  showToast('Настройки применены')
+  showToast(t('settings_applied'))
 }
 
 async function loadRoomInfo() {
@@ -1393,7 +1395,7 @@ async function createTeamAndJoin() {
     setError('rightError', null)
     const data = await fetchJson<{ team_id: string; team_code: string }>(
       `${API_BASE}/api/rooms/${roomCode}/teams`,
-      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: `Команда ${n}` }) },
+      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: t('team_default_name', { n }) }) },
       6000,
     )
     await joinTeamByCode(data.team_code, 'guesser')
@@ -1519,7 +1521,7 @@ function wireHandlers() {
       const errMsg = (e as Error).message
       showToast(
         errMsg === 'cannot_change_word_pack_after_game_started'
-          ? 'Пак слов нельзя менять после начала первого раунда до конца игры'
+          ? t('cannot_change_word_pack')
           : apiErrorMessage(errMsg),
       )
     }
