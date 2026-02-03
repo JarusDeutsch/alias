@@ -772,9 +772,16 @@ function renderCenterPanel(view: WsView) {
     const teamsList = teams
       .map((t) => {
         const isWinner = t.id === view.room.winner_team_id
-        return `<div class="flex items-center justify-between gap-4 rounded-xl px-4 py-3 ring-1 ${isWinner ? 'bg-emerald-500/15 ring-emerald-500/30' : 'bg-white/5 ring-white/10'}">
-          <span class="text-base font-medium ${isWinner ? 'text-emerald-100' : 'text-slate-300'}">${escapeHtml(t.name)}</span>
-          <span class="text-lg font-semibold tabular-nums ${isWinner ? 'text-emerald-50' : 'text-slate-200'}">${t.score}</span>
+        const names = t.player_names ?? []
+        const namesHtml = names.length
+          ? names.map((n) => `<span class="rounded-full bg-white/10 px-2 py-0.5 text-sm text-slate-200 ring-1 ring-white/10">${escapeHtml(n)}</span>`).join('')
+          : '<span class="text-sm text-slate-500">—</span>'
+        return `<div class="rounded-xl px-4 py-3 ring-1 ${isWinner ? 'bg-emerald-500/15 ring-emerald-500/30' : 'bg-white/5 ring-white/10'}">
+          <div class="flex items-center justify-between gap-4">
+            <span class="text-base font-medium ${isWinner ? 'text-emerald-100' : 'text-slate-300'}">${escapeHtml(t.name)}</span>
+            <span class="text-lg font-semibold tabular-nums ${isWinner ? 'text-emerald-50' : 'text-slate-200'}">${t.score}</span>
+          </div>
+          <div class="mt-2 flex flex-wrap gap-1.5">${namesHtml}</div>
         </div>`
       })
       .join('')
