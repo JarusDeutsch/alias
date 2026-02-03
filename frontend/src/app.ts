@@ -960,7 +960,7 @@ function renderRightPanel(view: WsView) {
         <label class="grid gap-1">
           <span class="text-base text-slate-300">${escapeHtml(t('word_pack_lang_label'))}</span>
           <select id="cfgWordPackLang" class="rounded-md bg-white/5 px-3 py-2 text-base ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500/60" ${canSettings && canChangeWordPack ? '' : 'disabled'}>
-            ${LOCALES.map((loc) => `<option value="${loc.code}" ${(cfg.word_pack_lang ?? 'ru') === loc.code ? 'selected' : ''}>${escapeHtml(loc.label)}</option>`).join('')}
+            ${LOCALES.map((loc) => `<option value="${loc.code}" ${(cfg.word_pack_lang ?? 'ru') === loc.code ? 'selected' : ''}>${escapeHtml(loc.native)}</option>`).join('')}
           </select>
         </label>`
     : ''
