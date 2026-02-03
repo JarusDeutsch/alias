@@ -447,10 +447,8 @@ class StateStore:
             raise PermissionError("wrong_room")
         if actor.role != PlayerRole.cluegiver or not actor.team_id:
             raise PermissionError("only_cluegiver")
-        if not room.game_over:
-            raise PermissionError("not_game_over")
 
-        # сбрасываем состояние комнаты
+        # сбрасываем состояние комнаты (можно перезапускать и во время игры)
         room.game_over = False
         room.winner_team_id = None
 

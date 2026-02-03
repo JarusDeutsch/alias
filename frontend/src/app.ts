@@ -482,7 +482,7 @@ function renderLobbyCard() {
         </button>
       </div>
 
-      ${
+      <div id="lobbyRoomCodeRow">${
         store.roomCode
           ? `<div class="flex flex-wrap items-center gap-2 text-base text-slate-400">
               <span>Комната:</span>
@@ -495,7 +495,7 @@ function renderLobbyCard() {
               <button id="loadRoom" type="button" class="rounded-lg bg-white/10 px-2 py-1 text-sm text-slate-300 hover:bg-white/15">Обновить</button>
             </div>`
           : `<div class="text-base text-slate-400"></div>`
-      }
+      }</div>
 
       <div id="lobbyError" class="hidden rounded-xl bg-rose-500/10 px-3 py-2 text-base text-rose-200 ring-1 ring-rose-500/20"></div>
     </div>
@@ -852,6 +852,14 @@ function renderRightPanel(view: WsView) {
           </select>
         </label>`
 
+  const canRestartInGame = view.me.role === 'cluegiver' && !!view.me.team_id
+  const restartInSettingsBtn =
+    canRestartInGame
+      ? `<button id="restartGameInSettings" type="button" class="mt-3 w-full rounded-2xl bg-amber-500/20 px-4 py-3 text-base font-semibold text-amber-200 ring-1 ring-amber-500/30 hover:bg-amber-500/30">
+          Перезапустить игру
+        </button>`
+      : ''
+
   const settings =
     store.settingsOpen
       ? `
@@ -878,8 +886,9 @@ function renderRightPanel(view: WsView) {
             <span id="cfgTargetLabel" class="text-base text-slate-300">${cfg.mode === 'to_words' ? 'Слов для победы' : 'Раундов до победы'}</span>
             <input id="cfgTarget" type="number" min="${cfg.mode === 'to_words' ? CONFIG_TARGET_WORDS_MIN : CONFIG_MAX_ROUNDS_MIN}" max="${cfg.mode === 'to_words' ? CONFIG_TARGET_WORDS_MAX : CONFIG_MAX_ROUNDS_MAX}" value="${cfg.mode === 'to_words' ? cfg.target_words : cfg.max_rounds}"
               class="rounded-xl bg-white/5 px-3 py-2 text-base ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500/60" ${canSettings ? '' : 'disabled'} />
-          </label>
-        </div>
+            </label>
+          </div>
+        ${restartInSettingsBtn}
       </div>
     `
       : ''
@@ -1307,7 +1316,19 @@ function wireHandlers() {
   roomCode?.addEventListener('input', () => {
     store.roomCode = roomCode.value.toUpperCase()
     save()
-    render()
+    const enterBtn = document.getElementById('enterRoom') as HTMLButtonElement | null
+    if (enterBtn) enterBtn.disabled = !store.roomCode.trim()
+    const row = document.getElementById('lobbyRoomCodeRow')
+    if (row) {
+      row.innerHTML = store.roomCode
+        ? `<div class="flex flex-wrap items-center gap-2 text-base text-slate-400">
+            <span>Комната:</span>
+            <button type="button" class="copyRoomCode inline-flex items-center font-mono tracking-widest text-slate-200 underline decoration-dotted underline-offset-4 hover:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/60" title="Нажмите, чтобы скопировать код комнаты" data-roomcode="${escapeHtml(store.roomCode)}">/${escapeHtml(store.roomCode)}</button>
+            <button id="loadRoom" type="button" class="rounded-lg bg-white/10 px-2 py-1 text-sm text-slate-300 hover:bg-white/15">Обновить</button>
+          </div>`
+        : `<div class="text-base text-slate-400"></div>`
+      document.getElementById('loadRoom')?.addEventListener('click', () => void loadRoomInfo())
+    }
   })
 
   ;(document.getElementById('createRoom') as HTMLButtonElement | null)?.addEventListener('click', () => void createRoom())
@@ -1362,15 +1383,7 @@ function wireHandlers() {
     }
   })
 
-  document.querySelectorAll<HTMLButtonElement>('.copyRoomCode').forEach((btn) => {
-    btn.addEventListener('click', async () => {
-      const raw = (btn.dataset.roomcode ?? '').trim()
-      const code = raw.replace(/^\//, '')
-      if (!code) return
-      const ok = await copyToClipboard(code)
-      showToast(ok ? 'Код комнаты скопирован' : 'Не удалось скопировать')
-    })
-  })
+  // copyRoomCode обрабатывается через делегирование в init (чтобы работало и после частичного обновления поля кода комнаты)
 
   ;(document.getElementById('toggleSettings') as HTMLButtonElement | null)?.addEventListener('click', () => {
     store.settingsOpen = !store.settingsOpen
@@ -1385,6 +1398,7 @@ function wireHandlers() {
   })
 
   ;(document.getElementById('restartGame') as HTMLButtonElement | null)?.addEventListener('click', () => void restartGame())
+  ;(document.getElementById('restartGameInSettings') as HTMLButtonElement | null)?.addEventListener('click', () => void restartGame())
 
   document.querySelectorAll<HTMLButtonElement>('.joinTeamBtn').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -1430,6 +1444,17 @@ function wireHandlers() {
   roundSecEl?.addEventListener('blur', syncDraftAndApply)
   targetEl?.addEventListener('blur', syncDraftAndApply)
 }
+
+// Делегирование: копирование кода комнаты (работает и для кнопки, вставленной при вводе кода без полного render)
+appEl.addEventListener('click', async (e) => {
+  const btn = (e.target as HTMLElement).closest('.copyRoomCode') as HTMLButtonElement | null
+  if (!btn) return
+  const raw = (btn.dataset.roomcode ?? '').trim()
+  const code = raw.replace(/^\//, '')
+  if (!code) return
+  const ok = await copyToClipboard(code)
+  showToast(ok ? 'Код комнаты скопирован' : 'Не удалось скопировать')
+})
 
 // init from URL
 const urlRoom = parseRoomCodeFromUrl()
