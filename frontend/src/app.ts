@@ -36,6 +36,7 @@ type RoomTeamSummary = {
   round_active: boolean
   players_count: number
   cluegiver_name?: string | null
+  player_names?: string[]
 }
 
 type RoomPublicView = {
@@ -572,23 +573,28 @@ function renderGameLayout(view: WsView) {
 }
 
 function renderTopBar(view: WsView) {
-  const gameStarted = (view.room.teams ?? []).some((t) => t.round_number > 0) && !view.room.game_over
-  const teams = view.room.teams
+  const teamsList = view.room.teams ?? []
+  const gameStarted = teamsList.some((t) => t.round_number > 0) && !view.room.game_over
+  const teams = teamsList
     .map((t) => {
       const winner = view.room.winner_team_id === t.id
+      const playerNames = (t.player_names ?? []).length
+        ? (t.player_names ?? []).map((n) => `<span class="rounded-full bg-white/10 px-2 py-0.5 text-sm text-slate-200 ring-1 ring-white/10">${escapeHtml(n)}</span>`).join('')
+        : '<span class="text-sm text-slate-500">пока никого</span>'
       const base = `
-        <div class="min-w-0">
+        <div class="min-w-0 flex-1">
           <div class="truncate text-base font-medium text-slate-100">${escapeHtml(t.name)}</div>
           <div class="text-base text-slate-400">раунд ${t.round_number}${t.round_active ? ' (идёт)' : ''}</div>
+          <div class="mt-1.5 flex flex-wrap gap-1">${playerNames}</div>
         </div>
-        <div class="ml-auto text-right">
+        <div class="ml-auto shrink-0 text-right">
           <div class="text-base font-semibold ${winner ? 'text-emerald-200' : 'text-slate-100'}">${t.score}</div>
           <div class="text-base text-slate-400">${t.total_correct} слов</div>
         </div>`
       if (gameStarted) {
-        return `<div class="flex items-center gap-2 rounded-xl bg-white/5 px-2.5 py-1.5 ring-1 ring-white/10">${base}</div>`
+        return `<div class="flex items-start gap-2 rounded-xl bg-white/5 px-2.5 py-1.5 ring-1 ring-white/10">${base}</div>`
       }
-      return `<button type="button" data-teamcode="${escapeHtml(t.code)}" class="joinTeamBtn flex w-full items-center gap-2 rounded-xl bg-white/5 px-2.5 py-1.5 text-left ring-1 ring-white/10 hover:bg-white/10 hover:ring-white/20 focus:outline-none focus:ring-2 focus:ring-indigo-500/60 cursor-pointer transition-colors" title="Нажмите, чтобы вступить в команду">${base}</button>`
+      return `<div role="button" tabindex="0" data-teamcode="${escapeHtml(t.code)}" class="joinTeamBtn flex w-full cursor-pointer items-start gap-2 rounded-xl bg-white/5 px-2.5 py-1.5 text-left ring-1 ring-white/10 transition-colors hover:bg-white/10 hover:ring-white/20 focus:outline-none focus:ring-2 focus:ring-indigo-500/60" title="Нажмите, чтобы вступить в команду">${base}</div>`
     })
     .join('')
 
@@ -1471,11 +1477,22 @@ appEl.addEventListener('click', async (e) => {
 })
 
 // Делегирование: клик по панели команды (под «Комната /ID») — вступить в команду
-appEl.addEventListener('click', (e) => {
-  const btn = (e.target as HTMLElement).closest('.joinTeamBtn') as HTMLButtonElement | null
-  if (!btn || btn.disabled) return
-  const code = btn.dataset.teamcode
+function handleJoinTeamClick(el: HTMLElement | null) {
+  if (!el) return
+  if ('disabled' in el && (el as HTMLButtonElement).disabled) return
+  const code = el.dataset.teamcode
   if (code) void joinTeamByCode(code, 'guesser')
+}
+appEl.addEventListener('click', (e) => {
+  const btn = (e.target as HTMLElement).closest('.joinTeamBtn') as HTMLElement | null
+  handleJoinTeamClick(btn)
+})
+appEl.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' && e.key !== ' ') return
+  const btn = (e.target as HTMLElement).closest('.joinTeamBtn') as HTMLElement | null
+  if (!btn) return
+  e.preventDefault()
+  handleJoinTeamClick(btn)
 })
 
 // Делегирование: клик по панели «Игроки без команды» — выйти в наблюдатели

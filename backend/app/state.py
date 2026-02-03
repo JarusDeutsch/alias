@@ -484,6 +484,7 @@ class StateStore:
             cluegiver_name: Optional[str] = None
             if t.cluegiver_id and t.cluegiver_id in self.state.players:
                 cluegiver_name = self.state.players[t.cluegiver_id].name
+            player_names = [self.state.players[pid].name for pid in t.player_ids if pid in self.state.players]
             teams.append(
                 RoomTeamSummary(
                     id=t.id,
@@ -495,6 +496,7 @@ class StateStore:
                     round_active=t.round_active,
                     players_count=len(t.player_ids),
                     cluegiver_name=cluegiver_name,
+                    player_names=player_names,
                 )
             )
         spectators = [p.name for p in self.state.players.values() if p.room_id == room_id and p.role == PlayerRole.spectator]

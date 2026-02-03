@@ -732,6 +732,7 @@ export class AliasState implements DurableObject {
     const teams = room.team_ids.map(tid => {
       const t = this.state.teams[tid]
       const cluegiverName = t.cluegiver_id ? this.state.players[t.cluegiver_id]?.name : null
+      const playerNames = t.player_ids.map(pid => this.state.players[pid]?.name).filter((n): n is string => !!n)
       return {
         id: t.id,
         name: t.name,
@@ -742,6 +743,7 @@ export class AliasState implements DurableObject {
         round_active: t.round_active,
         players_count: t.player_ids.length,
         cluegiver_name: cluegiverName,
+        player_names: playerNames,
       }
     })
     const spectators = Object.values(this.state.players)

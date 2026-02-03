@@ -108,6 +108,7 @@ class RoomTeamSummary(BaseModel):
     round_active: bool
     players_count: int
     cluegiver_name: Optional[str] = None
+    player_names: List[str] = Field(default_factory=list)
 
 
 class RoomPublicView(BaseModel):
