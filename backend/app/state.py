@@ -264,12 +264,16 @@ class StateStore:
         return self.state.rooms[team.room_id]
 
     def _ensure_can_edit_room(self, room: Room, actor_player_id: UUID) -> None:
-        """Право менять настройки: игра не завершена, игрок в команде; при only_cluegiver_can_edit_settings — только загадывающий."""
+        """Право менять настройки: только между раундами; игра не завершена; при only_cluegiver_can_edit_settings — только загадывающий."""
         actor = self.state.players[actor_player_id]
         if room.game_over:
             raise PermissionError("game_over")
         if not actor.team_id:
             raise PermissionError("only_cluegiver")  # в команде должен быть
+        for tid in room.team_ids:
+            t = self.state.teams.get(tid)
+            if t and t.round_active:
+                raise PermissionError("cannot_change_settings_during_round")
         only_cluegiver = getattr(room.config, "only_cluegiver_can_edit_settings", True)
         if only_cluegiver and actor.role != PlayerRole.cluegiver:
             raise PermissionError("only_cluegiver")

@@ -304,6 +304,8 @@ async function copyToClipboard(text: string): Promise<boolean> {
 function canEditSettings(view: WsView | null): boolean {
   if (!view) return false
   if (!view.me.team_id || view.room.game_over) return false
+  const roundActive = view.room.teams?.some((t) => t.round_active) ?? false
+  if (roundActive) return false
   const onlyCluegiver = view.room.config.only_cluegiver_can_edit_settings !== false
   return !onlyCluegiver || view.me.role === 'cluegiver'
 }
@@ -1101,8 +1103,8 @@ function renderRightPanel(view: WsView) {
             </select>
         </label>
 
-        <label class="flex cursor-pointer items-center gap-2">
-          <input id="cfgAnyoneEdit" type="checkbox" class="h-4 w-4 rounded border-white/20 bg-white/5 text-indigo-500 focus:ring-2 focus:ring-indigo-500/60" ${cfg.only_cluegiver_can_edit_settings === false ? 'checked' : ''} ${canSettings ? '' : 'disabled'} />
+        <label class="flex cursor-pointer items-center gap-3 rounded-md bg-white/5 px-3 py-2.5 ring-1 ring-white/10 transition-colors hover:bg-white/[0.07] focus-within:ring-2 focus-within:ring-indigo-500/60" for="cfgAnyoneEdit">
+          <input id="cfgAnyoneEdit" type="checkbox" class="alias-settings-checkbox" ${cfg.only_cluegiver_can_edit_settings === false ? 'checked' : ''} ${canSettings ? '' : 'disabled'} />
           <span class="text-base text-slate-300">${t('settings_allow_anyone_edit')}</span>
         </label>
 
@@ -1325,11 +1327,13 @@ async function connectWs(force: boolean) {
             ? t('cannot_change_word_pack')
             : err.message === 'cannot_change_win_condition_after_game_started'
               ? t('cannot_change_win_condition')
-              : err.message === 'not_your_turn'
-                ? t('not_your_turn')
-                : err.message === 'another_team_round_active'
-                  ? t('another_team_round_active')
-                  : err.message
+              : err.message === 'cannot_change_settings_during_round'
+                ? t('cannot_change_settings_during_round')
+                : err.message === 'not_your_turn'
+                  ? t('not_your_turn')
+                  : err.message === 'another_team_round_active'
+                    ? t('another_team_round_active')
+                    : err.message
         setError('rightError', msg)
         if (err.message === 'not_your_turn' || err.message === 'another_team_round_active') showToast(msg)
       }
@@ -1721,7 +1725,9 @@ function wireHandlers() {
           ? t('cannot_change_word_pack')
           : errMsg === 'cannot_change_win_condition_after_game_started'
             ? t('cannot_change_win_condition')
-            : apiErrorMessage(errMsg),
+            : errMsg === 'cannot_change_settings_during_round'
+              ? t('cannot_change_settings_during_round')
+              : apiErrorMessage(errMsg),
       )
     }
   })

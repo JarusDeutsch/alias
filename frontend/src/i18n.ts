@@ -164,6 +164,7 @@ const translations: Record<Locale, Messages> = {
     player_left: '{{name}} покинул комнату',
     cannot_change_word_pack: 'Пак слов нельзя менять после начала первого раунда до конца игры',
     cannot_change_win_condition: 'Условие победы нельзя менять после начала первого раунда',
+    cannot_change_settings_during_round: 'Настройки можно менять только между раундами',
     // Mobile
     tab_team: 'Команда',
     tab_controls: 'Управление',
@@ -310,6 +311,7 @@ const translations: Record<Locale, Messages> = {
     player_left: '{{name}} покинув кімнату',
     cannot_change_word_pack: 'Пак слів не можна змінювати після початку першого раунду до кінця гри',
     cannot_change_win_condition: 'Умову перемоги не можна змінювати після початку першого раунду',
+    cannot_change_settings_during_round: 'Налаштування можна змінювати лише між раундами',
     tab_team: 'Команда',
     tab_controls: 'Керування',
     team_default_name: 'Команда {{n}}',
@@ -455,6 +457,7 @@ const translations: Record<Locale, Messages> = {
     player_left: '{{name}} left the room',
     cannot_change_word_pack: 'Word pack cannot be changed after the first round has started until the game ends',
     cannot_change_win_condition: 'Win condition cannot be changed after the first round has started',
+    cannot_change_settings_during_round: 'Settings can only be changed between rounds',
     tab_team: 'Team',
     tab_controls: 'Controls',
     team_default_name: 'Team {{n}}',
