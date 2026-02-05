@@ -291,13 +291,6 @@ function canEditSettings(view: WsView | null): boolean {
   return !!view.me.team_id && !view.room.game_over
 }
 
-function remainingSeconds(team: TeamPrivateView | null): number | null {
-  if (!team || !team.round_active || !team.round_ends_at) return null
-  const end = Date.parse(team.round_ends_at)
-  if (Number.isNaN(end)) return null
-  return Math.max(0, Math.ceil((end - store.nowMs) / 1000))
-}
-
 function remainingSecondsFromEndAt(roundEndsAt: string | null | undefined): number | null {
   if (!roundEndsAt) return null
   const end = Date.parse(roundEndsAt)
@@ -921,9 +914,8 @@ function renderCenterPanel(view: WsView) {
   const activeTeam = view.active_team ?? null
   const myTeamIsPlaying = team.round_active
   const showAsGuesser = !myTeamIsPlaying
-  const remain = remainingSeconds(team)
-  const displayRemain = myTeamIsPlaying ? remain : remainingSecondsFromEndAt(activeTeam?.round_ends_at ?? null)
-  const timeExpired = (myTeamIsPlaying ? remain : displayRemain) !== null && (myTeamIsPlaying ? remain : displayRemain)! <= 0
+  const displayRemain = displayRemainingSeconds(view)
+  const timeExpired = displayRemain !== null && displayRemain <= 0
   const timer =
     displayRemain === null
       ? `<div class="text-base text-slate-400">${t('round_not_active')}</div>`
