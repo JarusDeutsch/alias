@@ -562,7 +562,7 @@ export function setLocale(locale: Locale) {
 }
 
 function interpolate(msg: string, params: Record<string, string | number>): string {
-  return msg.replace(/\{\{(\w+)\}\}/g, (_, key) => String(params[key] ?? ''))
+  return msg.replace(/\{\{(\w+)\}\}/g, (_fullMatch, paramKey) => String(params[paramKey] ?? ''))
 }
 
 export function t(key: string, params?: Record<string, string | number>): string {

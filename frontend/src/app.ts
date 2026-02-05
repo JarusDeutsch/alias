@@ -231,8 +231,8 @@ function save() {
   localStorage.setItem('alias_role', store.desiredRole)
 }
 
-function escapeHtml(s: string) {
-  return s.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;')
+function escapeHtml(str: string) {
+  return str.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;')
 }
 
 function applyTheme() {
@@ -252,17 +252,17 @@ function parseRoomCodeFromUrl(): string | null {
 }
 
 function validatePlayerName(name: string): string | null {
-  const s = name.trim()
-  if (s.length < PLAYER_NAME_MIN_LEN) return t('err_enter_name')
-  if (s.length > PLAYER_NAME_MAX_LEN) return t('err_name_max', { max: PLAYER_NAME_MAX_LEN })
+  const trimmed = name.trim()
+  if (trimmed.length < PLAYER_NAME_MIN_LEN) return t('err_enter_name')
+  if (trimmed.length > PLAYER_NAME_MAX_LEN) return t('err_name_max', { max: PLAYER_NAME_MAX_LEN })
   return null
 }
 
 function validateRoomCode(code: string): string | null {
-  const s = code.trim().toUpperCase()
-  if (s.length < ROOM_CODE_MIN_LEN) return t('err_enter_room_code')
-  if (s.length > ROOM_CODE_MAX_LEN) return t('err_room_code_length', { min: ROOM_CODE_MIN_LEN, max: ROOM_CODE_MAX_LEN })
-  if (!/^[A-Za-z0-9]+$/.test(s)) return t('err_room_code_alnum')
+  const trimmed = code.trim().toUpperCase()
+  if (trimmed.length < ROOM_CODE_MIN_LEN) return t('err_enter_room_code')
+  if (trimmed.length > ROOM_CODE_MAX_LEN) return t('err_room_code_length', { min: ROOM_CODE_MIN_LEN, max: ROOM_CODE_MAX_LEN })
+  if (!/^[A-Za-z0-9]+$/.test(trimmed)) return t('err_room_code_alnum')
   return null
 }
 
@@ -272,7 +272,7 @@ function apiErrorMessage(detail: string): string {
 
 async function fetchJson<T>(url: string, init: RequestInit, timeoutMs = 6000): Promise<T> {
   const controller = new AbortController()
-  const t = window.setTimeout(() => controller.abort(), timeoutMs)
+  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs)
   try {
     const res = await fetch(url, { ...init, signal: controller.signal })
     const text = await res.text()
@@ -291,7 +291,7 @@ async function fetchJson<T>(url: string, init: RequestInit, timeoutMs = 6000): P
     }
     return (text ? JSON.parse(text) : {}) as T
   } finally {
-    window.clearTimeout(t)
+    window.clearTimeout(timeoutId)
   }
 }
 
@@ -1217,7 +1217,7 @@ function renderRightPanel(view: WsView) {
   const activeTeam = view.active_team ?? null
   const teamsList = view.room.teams ?? []
   const canStartRoundTeamId = view.can_start_round_team_id ?? null
-  const fallbackNextIndex = teamsList.length ? (teamsList.reduce((s, t) => s + t.round_number, 0) % teamsList.length) : 0
+  const fallbackNextIndex = teamsList.length ? (teamsList.reduce((sum, team) => sum + team.round_number, 0) % teamsList.length) : 0
   const effectiveCanStartId = canStartRoundTeamId ?? teamsList[fallbackNextIndex]?.id ?? null
   const canMyTeamStart = !!(team && effectiveCanStartId && String(team.id) === String(effectiveCanStartId))
   const otherTeamPlaying = !!(activeTeam && team && activeTeam.id !== team.id)
