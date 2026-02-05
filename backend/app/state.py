@@ -7,6 +7,7 @@ from typing import Dict, List, Optional, Tuple
 from uuid import UUID, uuid4
 
 from .models import (
+    ActiveTeamView,
     GameConfig,
     GameMode,
     GameState,
@@ -305,6 +306,14 @@ class StateStore:
             raise PermissionError("round_already_active")
         if room.config.mode == GameMode.to_rounds and team.round_number >= room.config.max_rounds:
             raise PermissionError("max_rounds_reached_for_team")
+        # Очерёдность: раунд 1 — команда 0, раунд 2 — команда 1, раунд 3 — команда 0, ...
+        total_rounds = sum(
+            self.state.teams[tid].round_number for tid in room.team_ids if self.state.teams.get(tid)
+        )
+        next_index = total_rounds % len(room.team_ids)
+        team_that_can_start = room.team_ids[next_index]
+        if team_id != team_that_can_start:
+            raise PermissionError("not_your_turn")
 
         team.round_number += 1
         team.round_active = True
@@ -559,5 +568,19 @@ class StateStore:
         elif player.role == PlayerRole.spectator:
             spectator_teams = [self.team_private_view(tid).model_dump(mode="json") for tid in self.state.rooms[player.room_id].team_ids]
 
-        return WsStateView(room=room_view, me=me, my_team=my_team, spectator_teams=spectator_teams).model_dump(mode="json")
+        room = self.state.rooms[player.room_id]
+        active_team = None
+        for tid in room.team_ids:
+            t = self.state.teams.get(tid)
+            if t and t.round_active:
+                active_team = ActiveTeamView(id=t.id, name=t.name, rounds=t.rounds)
+                break
+
+        return WsStateView(
+            room=room_view,
+            me=me,
+            my_team=my_team,
+            spectator_teams=spectator_teams,
+            active_team=active_team,
+        ).model_dump(mode="json")
 

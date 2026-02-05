@@ -154,11 +154,19 @@ class PlayerView(BaseModel):
     team_id: Optional[UUID]
 
 
+class ActiveTeamView(BaseModel):
+    """Команда, у которой сейчас идёт раунд (для отображения истории слов другой команде и зрителям)."""
+    id: UUID
+    name: str
+    rounds: List[List[WordEvent]]
+
+
 class WsStateView(BaseModel):
     room: RoomPublicView
     me: PlayerView
     my_team: Optional[dict] = None  # TeamPrivateView (+ current_word for cluegiver)
     spectator_teams: Optional[List[dict]] = None  # TeamPrivateView без current_word (для наблюдателя)
+    active_team: Optional[ActiveTeamView] = None  # команда с round_active (id, name, rounds)
 
 
 class WsClientHello(BaseModel):

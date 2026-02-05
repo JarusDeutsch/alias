@@ -582,6 +582,11 @@ export class AliasState implements DurableObject {
     if (room.config.mode === 'to_rounds' && team.round_number >= room.config.max_rounds) {
       throw new Error('max_rounds_reached_for_team')
     }
+    // Очерёдность: раунд 1 — команда 0, раунд 2 — команда 1, раунд 3 — команда 0, ...
+    const totalRounds = room.team_ids.reduce((sum, tid) => sum + (this.state.teams[tid]?.round_number ?? 0), 0)
+    const nextIndex = totalRounds % room.team_ids.length
+    const teamThatCanStart = room.team_ids[nextIndex]
+    if (teamId !== teamThatCanStart) throw new Error('not_your_turn')
     team.round_number += 1
     team.round_active = true
     team.round_started_at = nowISO()
@@ -802,6 +807,7 @@ export class AliasState implements DurableObject {
   private viewForPlayer(playerId: string): Record<string, unknown> {
     const player = this.state.players[playerId]
     if (!player) throw new Error('player_not_found')
+    const room = this.state.rooms[player.room_id]
     const roomView = this.roomPublicView(player.room_id)
     const me = { id: player.id, name: player.name, role: player.role, team_id: player.team_id }
     let myTeam: Record<string, unknown> | null = null
@@ -813,10 +819,15 @@ export class AliasState implements DurableObject {
         (myTeam as Record<string, unknown>).current_word = this.currentWord(player.team_id)
       }
     } else if (player.role === 'spectator') {
-      const room = this.state.rooms[player.room_id]
       spectatorTeams = room.team_ids.map(tid => this.teamPrivateView(tid))
     }
-    return { room: roomView, me, my_team: myTeam, spectator_teams: spectatorTeams }
+    const activeTeamId = room.team_ids.find(tid => this.state.teams[tid]?.round_active)
+    let activeTeam: { id: string; name: string; rounds: WordEvent[][] } | null = null
+    if (activeTeamId) {
+      const t = this.state.teams[activeTeamId]
+      activeTeam = { id: t.id, name: t.name, rounds: t.rounds }
+    }
+    return { room: roomView, me, my_team: myTeam, spectator_teams: spectatorTeams, active_team: activeTeam }
   }
 }
 

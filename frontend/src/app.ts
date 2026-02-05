@@ -1,4 +1,4 @@
-﻿import { getLocale, type Locale, LOCALES, setLocale, t } from './i18n'
+import { getLocale, type Locale, LOCALES, setLocale, t } from './i18n'
 import { playCorrect, playDontKnow, playLose, playSkip, playWin } from './sounds'
 
 type PlayerRole = 'cluegiver' | 'guesser' | 'spectator'
@@ -73,11 +73,14 @@ type TeamPrivateView = {
   current_word?: string | null
 }
 
+type ActiveTeamView = { id: string; name: string; rounds: WordEvent[][] }
+
 type WsView = {
   room: RoomPublicView
   me: { id: string; name: string; role: PlayerRole; team_id: string | null }
   my_team: TeamPrivateView | null
   spectator_teams?: TeamPrivateView[] | null
+  active_team?: ActiveTeamView | null
 }
 
 type WsState = { type: 'state'; view: WsView }
@@ -1007,13 +1010,19 @@ function renderRightPanel(view: WsView) {
     `
       : ''
 
+  const teamsList = view.room.teams ?? []
+  const totalRounds = teamsList.reduce((s, t) => s + t.round_number, 0)
+  const nextTurnIndex = teamsList.length ? totalRounds % teamsList.length : 0
+  const teamThatCanStart = teamsList[nextTurnIndex]
+  const canMyTeamStart = team && teamThatCanStart && team.id === teamThatCanStart.id
+
   const controls =
     view.me.role === 'cluegiver' && view.me.team_id
       ? `
       <div class="mt-4 grid gap-3 sm:grid-cols-2">
         <button id="startRound" class="rounded-md bg-indigo-500 px-4 py-3 text-base font-semibold text-white hover:bg-indigo-400 disabled:opacity-50" ${
-          team && !team.round_active && !view.room.game_over ? '' : 'disabled'
-        }>
+          team && !team.round_active && !view.room.game_over && canMyTeamStart ? '' : 'disabled'
+        } title="${!canMyTeamStart && team && !team.round_active && teamsList.length > 1 ? t('not_your_turn') : ''}">
           ${t('start_round')}
         </button>
         <button id="endRound" class="rounded-md bg-rose-500/90 px-4 py-3 text-base font-semibold text-white hover:bg-rose-400 disabled:opacity-50" ${
@@ -1025,8 +1034,15 @@ function renderRightPanel(view: WsView) {
       `
       : ''
 
-  const history = team
-    ? `
+  const isCluegiver = view.me.role === 'cluegiver'
+  const activeTeam = view.active_team ?? null
+  const myTeamIsPlaying = team?.id != null && activeTeam?.id === team.id
+  const showMyTeamHistory = team && isCluegiver
+  const showActiveTeamHistory = activeTeam && !myTeamIsPlaying
+
+  const history =
+    showMyTeamHistory
+      ? `
       <div class="mt-6 rounded-md bg-white/5 p-5 ring-1 ring-white/10">
         <div class="text-base text-slate-300">${t('word_history')}</div>
         <div class="mt-3 max-h-[510px] overflow-y-auto pr-1">
@@ -1034,7 +1050,16 @@ function renderRightPanel(view: WsView) {
         </div>
       </div>
     `
-    : ''
+      : showActiveTeamHistory
+        ? `
+      <div class="mt-6 rounded-md bg-white/5 p-5 ring-1 ring-white/10">
+        <div class="text-base text-slate-300">${t('now_playing')}: <span class="font-semibold text-slate-100">${escapeHtml(activeTeam.name)}</span></div>
+        <div class="mt-3 max-h-[510px] overflow-y-auto pr-1">
+          ${renderRoundHistory(activeTeam as TeamPrivateView, true, false)}
+        </div>
+      </div>
+    `
+        : ''
 
   return `
     <div class="flex items-start justify-between gap-3">
@@ -1168,8 +1193,11 @@ async function connectWs(force: boolean) {
         const msg =
           err.message === 'cannot_change_word_pack_after_game_started'
             ? t('cannot_change_word_pack')
-            : err.message
+            : err.message === 'not_your_turn'
+              ? t('not_your_turn')
+              : err.message
         setError('rightError', msg)
+        if (err.message === 'not_your_turn') showToast(msg)
       }
     } catch {
       // ignore
