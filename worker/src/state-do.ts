@@ -828,10 +828,10 @@ export class AliasState implements DurableObject {
       spectatorTeams = room.team_ids.map(tid => this.teamPrivateView(tid))
     }
     const activeTeamId = room.team_ids.find(tid => this.state.teams[tid]?.round_active)
-    let activeTeam: { id: string; name: string; rounds: WordEvent[][] } | null = null
+    let activeTeam: { id: string; name: string; rounds: WordEvent[][]; round_ends_at: string | null } | null = null
     if (activeTeamId) {
       const t = this.state.teams[activeTeamId]
-      activeTeam = { id: t.id, name: t.name, rounds: t.rounds }
+      activeTeam = { id: t.id, name: t.name, rounds: t.rounds, round_ends_at: t.round_ends_at }
     }
     // Чья очередь начинать следующий раунд (для блокировки кнопки на фронте)
     const teamIds = room.team_ids

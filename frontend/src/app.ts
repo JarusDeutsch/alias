@@ -76,7 +76,7 @@ type TeamPrivateView = {
   current_word?: string | null
 }
 
-type ActiveTeamView = { id: string; name: string; rounds: WordEvent[][] }
+type ActiveTeamView = { id: string; name: string; rounds: WordEvent[][]; round_ends_at?: string | null }
 
 type WsView = {
   room: RoomPublicView
@@ -147,6 +147,7 @@ const store = {
   view: null as WsView | null,
   connecting: false,
   nowMs: Date.now(),
+  pendingWordOutcome: false,
   settingsDraft: null as GameConfig | null,
   settingsDirty: false,
   settingsOpen: false,
@@ -297,6 +298,36 @@ function remainingSeconds(team: TeamPrivateView | null): number | null {
   return Math.max(0, Math.ceil((end - store.nowMs) / 1000))
 }
 
+function remainingSecondsFromEndAt(roundEndsAt: string | null | undefined): number | null {
+  if (!roundEndsAt) return null
+  const end = Date.parse(roundEndsAt)
+  if (Number.isNaN(end)) return null
+  return Math.max(0, Math.ceil((end - store.nowMs) / 1000))
+}
+
+/** Оставшееся время текущего раунда для отображения (своя команда или активная) */
+function displayRemainingSeconds(view: WsView | null): number | null {
+  if (!view?.room?.config) return null
+  const team = view.my_team
+  if (team?.round_active && team.round_ends_at) return remainingSecondsFromEndAt(team.round_ends_at)
+  const active = view.active_team
+  if (active?.round_ends_at) return remainingSecondsFromEndAt(active.round_ends_at)
+  return null
+}
+
+function displayRemainingMs(view: WsView | null): number | null {
+  if (!view?.room?.config) return null
+  const team = view.my_team
+  if (team?.round_active && team.round_ends_at) {
+    const end = Date.parse(team.round_ends_at)
+    return Number.isNaN(end) ? null : Math.max(0, end - store.nowMs)
+  }
+  const active = view.active_team
+  if (!active?.round_ends_at) return null
+  const end = Date.parse(active.round_ends_at)
+  return Number.isNaN(end) ? null : Math.max(0, end - store.nowMs)
+}
+
 function remainingMs(team: TeamPrivateView | null): number | null {
   if (!team || !team.round_active || !team.round_ends_at) return null
   const end = Date.parse(team.round_ends_at)
@@ -342,8 +373,7 @@ function formatMmSs(totalSeconds: number) {
 }
 
 function updateTimerTexts() {
-  const team = store.view?.my_team ?? null
-  const remain = remainingSeconds(team)
+  const remain = displayRemainingSeconds(store.view ?? null)
   const text = remain === null ? '' : `${remain}s`
   const a = document.getElementById('roundTimerValue')
   if (a) a.textContent = text
@@ -354,7 +384,7 @@ function updateTimerTexts() {
   const wrap = document.getElementById('globalTimerWrap')
   const digits = document.getElementById('globalTimerDigits')
   const bar = document.getElementById('globalTimerBarInner') as HTMLDivElement | null
-  const ms = remainingMs(team)
+  const ms = displayRemainingMs(store.view ?? null)
   if (!wrap || !digits || !bar || !store.view) return
 
   if (ms === null) {
@@ -453,8 +483,13 @@ function render() {
     </div>`
       : ''
 
+  const displayRemainGlobal = view ? displayRemainingSeconds(view) : null
+  const totalSecondsGlobal = view?.room?.config?.round_seconds ?? 60
+  const isLowTime = displayRemainGlobal !== null && totalSecondsGlobal > 0 && displayRemainGlobal <= totalSecondsGlobal * 0.1
+  const pageBgClass = `alias-page-bg min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-slate-100${isLowTime ? ' alias-page-bg-red-tint' : ''}`
+
   const mainContent = `
-    <div class="alias-page-bg min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-slate-100">
+    <div class="${pageBgClass}">
       <div class="relative z-10 mx-auto max-w-[1520px] px-4 py-8">
         <div id="aliasHeaderWrap">${header}</div>
         <div id="aliasBodyWrap" class="alias-divider mt-8 pt-8">${body}</div>
@@ -853,13 +888,15 @@ function renderCenterPanel(view: WsView) {
   const activeTeam = view.active_team ?? null
   const myTeamIsPlaying = team.round_active
   const showAsGuesser = !myTeamIsPlaying
-
   const remain = remainingSeconds(team)
-  const timeExpired = remain !== null && remain <= 0
+  const displayRemain = myTeamIsPlaying ? remain : remainingSecondsFromEndAt(activeTeam?.round_ends_at ?? null)
+  const timeExpired = (myTeamIsPlaying ? remain : displayRemain) !== null && (myTeamIsPlaying ? remain : displayRemain)! <= 0
   const timer =
-    remain === null
+    displayRemain === null
       ? `<div class="text-base text-slate-400">${t('round_not_active')}</div>`
-      : `<div class="text-base text-slate-300">${t('round_remaining', { n: team.round_number })} <span id="roundTimerValue" class="font-semibold text-slate-100">${remain}s</span>${t('time_left_suffix') ? ' ' + t('time_left_suffix') : ''}</div>`
+      : myTeamIsPlaying
+        ? `<div class="text-base text-slate-300">${t('round_remaining', { n: team.round_number })} <span id="roundTimerValue" class="font-semibold text-slate-100">${displayRemain}s</span>${t('time_left_suffix') ? ' ' + t('time_left_suffix') : ''}</div>`
+        : `<div class="text-base text-slate-300">${t('timer')}: <span id="roundTimerValue" class="font-semibold text-slate-100">${displayRemain}s</span></div>`
 
   const isCluegiver = view.me.role === 'cluegiver' && team.cluegiver_id === view.me.id
   const showCluegiverUI = isCluegiver && myTeamIsPlaying
@@ -924,12 +961,12 @@ function renderCenterPanel(view: WsView) {
   const roleLabel = isCluegiver && !myTeamIsPlaying ? t('you_cluegiver') : t('you_guesser')
   return `
     <div class="text-base text-slate-300">${roleLabel}${waitingHint}</div>
-    ${myTeamIsPlaying ? timer : (activeTeam && activeTeam.id !== team.id ? '' : timer)}
-    ${myTeamIsPlaying ? guesserTimerExpiredHint : ''}
+    ${timer}
+    ${myTeamIsPlaying ? guesserTimerExpiredHint : (displayRemain !== null && displayRemain <= 0 ? `<div class="mt-2 text-base text-amber-200/90">${t('time_up_wait_clue')}</div>` : '')}
     <div class="mt-6 rounded-md bg-white/5 p-7 ring-1 ring-white/10">
       <div class="text-base text-slate-300">${historyTitle}</div>
       <div class="mt-3 max-h-[510px] overflow-y-auto pr-1">
-        ${renderRoundHistory(historyTeam, true, !team.round_active && historyTeam === team)}
+        ${renderRoundHistory(historyTeam, true, !team.round_active && historyTeam === team, store.pendingWordOutcome)}
       </div>
     </div>
     <div id="gameError" class="mt-3 hidden rounded-md bg-rose-500/10 px-3 py-2 text-base text-rose-200 ring-1 ring-rose-500/20"></div>
@@ -940,7 +977,7 @@ function renderRightPanel(view: WsView) {
   const canSettings = canEditSettings(view)
   const cfg = store.settingsDraft ?? view.room.config
   const team = view.my_team
-  const remain = remainingSeconds(team ?? null)
+  const remain = displayRemainingSeconds(view)
   const gameStarted = (view.room.teams ?? []).some((t) => t.round_number > 0) && !view.room.game_over
 
   const dice = `
@@ -1072,7 +1109,6 @@ function renderRightPanel(view: WsView) {
   const isCluegiver = view.me.role === 'cluegiver'
   const myTeamIsPlaying = team?.id != null && activeTeam?.id === team.id
   const showMyTeamHistory = team && isCluegiver && myTeamIsPlaying
-  const showActiveTeamHistory = activeTeam && !myTeamIsPlaying
 
   const history =
     showMyTeamHistory
@@ -1080,20 +1116,11 @@ function renderRightPanel(view: WsView) {
       <div class="mt-6 rounded-md bg-white/5 p-5 ring-1 ring-white/10">
         <div class="text-base text-slate-300">${t('word_history')}</div>
         <div class="mt-3 max-h-[510px] overflow-y-auto pr-1">
-          ${renderRoundHistory(team, true, !team.round_active)}
+          ${renderRoundHistory(team, true, !team.round_active, store.pendingWordOutcome)}
         </div>
       </div>
     `
-      : showActiveTeamHistory
-        ? `
-      <div class="mt-6 rounded-md bg-white/5 p-5 ring-1 ring-white/10">
-        <div class="text-base text-slate-300">${t('now_playing')}: <span class="font-semibold text-slate-100">${escapeHtml(activeTeam.name)}</span></div>
-        <div class="mt-3 max-h-[510px] overflow-y-auto pr-1">
-          ${renderRoundHistory(activeTeam as TeamPrivateView, true, false)}
-        </div>
-      </div>
-    `
-        : ''
+      : ''
 
   return `
     <div class="flex items-start justify-between gap-3">
@@ -1113,7 +1140,7 @@ function renderRightPanel(view: WsView) {
   `
 }
 
-function renderRoundHistory(team: TeamPrivateView, onlyCurrent: boolean, editable = false) {
+function renderRoundHistory(team: TeamPrivateView, onlyCurrent: boolean, editable = false, pendingOutcome = false) {
   const rounds = team.rounds || []
   if (!rounds.length) return `<div class="text-base text-slate-400">Пока пусто.</div>`
 
@@ -1134,12 +1161,14 @@ function renderRoundHistory(team: TeamPrivateView, onlyCurrent: boolean, editabl
                     : e.outcome === 'skip'
                       ? '<span class="rounded-full bg-rose-500/20 px-2 py-0.5 text-base text-rose-200 ring-1 ring-rose-500/30">-1</span>'
                       : '<span class="rounded-full bg-white/10 px-2 py-0.5 text-base text-slate-200 ring-1 ring-white/10">0</span>'
+                const sel = (o: string) => (editable && e.outcome === o ? ' ring-2 ring-white ring-offset-2 ring-offset-slate-800 font-semibold' : '')
+                const dis = pendingOutcome ? ' disabled' : ''
                 const buttons =
                   editable
                     ? `<div class="flex flex-wrap gap-1" data-round-index="${roundIdx}" data-word-index="${wordIdx}">
-                        <button type="button" class="setWordOutcomeBtn rounded-md bg-emerald-500/80 px-2 py-1 text-sm text-white hover:bg-emerald-400" data-outcome="correct">+1</button>
-                        <button type="button" class="setWordOutcomeBtn rounded-md bg-white/10 px-2 py-1 text-sm text-slate-200 ring-1 ring-white/10 hover:bg-white/20" data-outcome="dont_know">0</button>
-                        <button type="button" class="setWordOutcomeBtn rounded-md bg-rose-500/80 px-2 py-1 text-sm text-white hover:bg-rose-400" data-outcome="skip">−1</button>
+                        <button type="button" class="setWordOutcomeBtn rounded-md bg-emerald-500/80 px-2 py-1 text-sm text-white hover:bg-emerald-400 disabled:opacity-50${sel('correct')}" data-outcome="correct"${dis}>+1</button>
+                        <button type="button" class="setWordOutcomeBtn rounded-md bg-white/10 px-2 py-1 text-sm text-slate-200 ring-1 ring-white/10 hover:bg-white/20 disabled:opacity-50${sel('dont_know')}" data-outcome="dont_know"${dis}>0</button>
+                        <button type="button" class="setWordOutcomeBtn rounded-md bg-rose-500/80 px-2 py-1 text-sm text-white hover:bg-rose-400 disabled:opacity-50${sel('skip')}" data-outcome="skip"${dis}>−1</button>
                       </div>`
                     : tag
                 return `<li class="flex items-center justify-between gap-3 rounded-md bg-white/5 px-3 py-2 ring-1 ring-white/10">
@@ -1220,6 +1249,7 @@ async function connectWs(force: boolean) {
         })
         const prevGameOver = store.view?.room?.game_over
         store.view = data.view
+        store.pendingWordOutcome = false
         // После перезапуска игры сервер переводит всех в «Игроки без команды» — синхронизируем store.teamCode
         if (!data.view.me.team_id) {
           store.teamCode = ''
@@ -1241,6 +1271,7 @@ async function connectWs(force: boolean) {
         leaveRoomToLobby()
       } else {
         const err = data as WsError
+        store.pendingWordOutcome = false
         log('error', '← ошибка от сервера', { message: err.message })
         const msg =
           err.message === 'cannot_change_word_pack_after_game_started'
@@ -1687,6 +1718,9 @@ function wireHandlers() {
     const wordIndex = parseInt(wrap.dataset.wordIndex ?? '', 10)
     const outcome = (btn.dataset.outcome ?? 'dont_know') as 'correct' | 'dont_know' | 'skip'
     if (Number.isNaN(roundIndex) || Number.isNaN(wordIndex)) return
+    if (store.pendingWordOutcome) return
+    store.pendingWordOutcome = true
+    render()
     log('word', 'изменение очка за слово', { round_index: roundIndex, word_index: wordIndex, outcome })
     setError('rightError', null)
     sendWs({ type: 'set_word_outcome', round_index: roundIndex, word_index: wordIndex, outcome })

@@ -159,6 +159,7 @@ class ActiveTeamView(BaseModel):
     id: UUID
     name: str
     rounds: List[List[WordEvent]]
+    round_ends_at: Optional[datetime] = None
 
 
 class WsStateView(BaseModel):

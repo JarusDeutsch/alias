@@ -577,7 +577,7 @@ class StateStore:
         for tid in room.team_ids:
             t = self.state.teams.get(tid)
             if t and t.round_active:
-                active_team = ActiveTeamView(id=t.id, name=t.name, rounds=t.rounds)
+                active_team = ActiveTeamView(id=t.id, name=t.name, rounds=t.rounds, round_ends_at=t.round_ends_at)
                 break
 
         total_rounds = sum(

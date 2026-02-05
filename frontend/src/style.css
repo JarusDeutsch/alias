@@ -30,6 +30,11 @@ body {
   background-size: 280px 280px;
 }
 
+/* Красный отлив фона при остатке времени ≤10% */
+.alias-page-bg-red-tint {
+  background: linear-gradient(to bottom right, rgb(15 23 42), rgb(30 41 59), rgb(120 30 50));
+}
+
 /* Global round timer UI */
 .alias-timer-digits {
   font-variant-numeric: tabular-nums;
