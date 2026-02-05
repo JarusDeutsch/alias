@@ -95,6 +95,8 @@ const API_BASE =
     ? import.meta.env.VITE_API_BASE.replace(/\/$/, '')
     : `${window.location.protocol}//${window.location.hostname}:8000`
 const appEl = document.querySelector<HTMLDivElement>('#app')!
+const BUILD_ID = 'turn-order-v1'
+if (appEl) appEl.dataset.build = BUILD_ID
 
 setLocale(getLocale())
 
