@@ -347,7 +347,7 @@ export class AliasState implements DurableObject {
     if (room.game_over) return
     for (const tid of room.team_ids) {
       const t = this.state.teams[tid]
-      if (t?.round_number > 0) throw new Error('cannot_change_word_pack_after_game_started')
+      if (t?.round_number > 0) throw new Error('cannot_change_settings_after_game_started')
     }
   }
 
@@ -558,7 +558,7 @@ export class AliasState implements DurableObject {
     if (room.game_over) throw new Error('game_over')
     if (!actor.team_id) throw new Error('only_cluegiver')
     for (const tid of room.team_ids) {
-      if (this.state.teams[tid]?.round_active) throw new Error('cannot_change_settings_during_round')
+      if (this.state.teams[tid]?.round_number > 0) throw new Error('cannot_change_settings_after_game_started')
     }
     const onlyCluegiver = room.config.only_cluegiver_can_edit_settings !== false
     if (onlyCluegiver && actor.role !== 'cluegiver') throw new Error('only_cluegiver')

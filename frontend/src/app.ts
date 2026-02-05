@@ -304,8 +304,8 @@ async function copyToClipboard(text: string): Promise<boolean> {
 function canEditSettings(view: WsView | null): boolean {
   if (!view) return false
   if (!view.me.team_id || view.room.game_over) return false
-  const roundActive = view.room.teams?.some((t) => t.round_active) ?? false
-  if (roundActive) return false
+  const gameStarted = view.room.teams?.some((t) => t.round_number > 0) ?? false
+  if (gameStarted) return false
   const onlyCluegiver = view.room.config.only_cluegiver_can_edit_settings !== false
   return !onlyCluegiver || view.me.role === 'cluegiver'
 }
@@ -1323,17 +1323,16 @@ async function connectWs(force: boolean) {
         store.pendingWordOutcome = false
         log('error', '← ошибка от сервера', { message: err.message })
         const msg =
+          err.message === 'cannot_change_settings_after_game_started' ||
           err.message === 'cannot_change_word_pack_after_game_started'
-            ? t('cannot_change_word_pack')
+            ? t('cannot_change_settings_after_game_started')
             : err.message === 'cannot_change_win_condition_after_game_started'
               ? t('cannot_change_win_condition')
-              : err.message === 'cannot_change_settings_during_round'
-                ? t('cannot_change_settings_during_round')
-                : err.message === 'not_your_turn'
-                  ? t('not_your_turn')
-                  : err.message === 'another_team_round_active'
-                    ? t('another_team_round_active')
-                    : err.message
+              : err.message === 'not_your_turn'
+                ? t('not_your_turn')
+                : err.message === 'another_team_round_active'
+                  ? t('another_team_round_active')
+                  : err.message
         setError('rightError', msg)
         if (err.message === 'not_your_turn' || err.message === 'another_team_round_active') showToast(msg)
       }
@@ -1343,17 +1342,16 @@ async function connectWs(force: boolean) {
   }
   ws.onclose = () => {
     log('ws', 'соединение закрыто')
-    store.connecting = false
     store.ws = null
+    // Если будем автопереподключаться — сразу показываем «Подключается», чтобы не мигало «Не подключено»
+    const willReconnect = Boolean(store.playerId && store.playerRoomCode && store.reconnectTimerId == null)
+    store.connecting = willReconnect
     render()
-    // Автопереподключение, если мы в комнате и не выходили сами
-    if (store.playerId && store.playerRoomCode && store.reconnectTimerId == null) {
+    if (willReconnect) {
       const delay = Math.min(1000 * Math.pow(2, store.reconnectAttempt), 30000)
       store.reconnectAttempt = Math.min(store.reconnectAttempt + 1, 10)
       store.reconnectTimerId = window.setTimeout(() => {
         store.reconnectTimerId = null
-        store.connecting = true
-        render()
         void connectWs(true)
       }, delay)
     }
@@ -1721,13 +1719,12 @@ function wireHandlers() {
     } catch (e) {
       const errMsg = (e as Error).message
       showToast(
+        errMsg === 'cannot_change_settings_after_game_started' ||
         errMsg === 'cannot_change_word_pack_after_game_started'
-          ? t('cannot_change_word_pack')
+          ? t('cannot_change_settings_after_game_started')
           : errMsg === 'cannot_change_win_condition_after_game_started'
             ? t('cannot_change_win_condition')
-            : errMsg === 'cannot_change_settings_during_round'
-              ? t('cannot_change_settings_during_round')
-              : apiErrorMessage(errMsg),
+            : apiErrorMessage(errMsg),
       )
     }
   })
