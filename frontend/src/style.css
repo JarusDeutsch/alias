@@ -189,92 +189,10 @@ select option {
   transform: rotate(45deg);
 }
 
-/* Появление текущего слова у загадывающего */
-.alias-word-appear {
-  animation: alias-word-pop 0.35s ease-out;
-}
-@keyframes alias-word-pop {
-  from {
-    opacity: 0;
-    transform: scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-/* Подсветка последнего угаданного слова в истории */
-.alias-last-correct-pulse {
-  animation: alias-last-correct-pulse 2s ease-out;
-  box-shadow: 0 0 0 1px rgba(52, 211, 153, 0.35);
-}
-@keyframes alias-last-correct-pulse {
-  0% {
-    box-shadow: 0 0 0 2px rgba(52, 211, 153, 0.5), 0 0 12px rgba(52, 211, 153, 0.2);
-  }
-  100% {
-    box-shadow: 0 0 0 1px rgba(52, 211, 153, 0.2);
-  }
-}
-
-/* Модалка шеринга: клик по фону закрывает */
-.alias-share-modal-backdrop {
-  cursor: pointer;
-}
-.alias-share-modal-content {
-  cursor: default;
-}
-
 /* Тонкие разделительные линии между смысловыми блоками */
 .alias-divider {
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 .alias-divider-subtle {
   border-top: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-/* Светлая тема */
-html.alias-theme-light .alias-page-bg {
-  background: linear-gradient(to bottom right, #f1f5f9, #e2e8f0, #c7d2fe);
-}
-html.alias-theme-light .alias-page-bg::before {
-  opacity: 0.03;
-}
-html.alias-theme-light .alias-page-bg::after {
-  background: linear-gradient(to bottom right, transparent 0%, transparent 35%, rgba(127, 29, 29, 0.06) 70%, rgba(153, 27, 27, 0.12) 100%);
-}
-html.alias-theme-light,
-html.alias-theme-light body {
-  color: #1e293b;
-}
-html.alias-theme-light .alias-page-bg .text-slate-100,
-html.alias-theme-light .alias-page-bg h1 {
-  color: #0f172a;
-}
-html.alias-theme-light .alias-page-bg .text-slate-300 {
-  color: #475569;
-}
-html.alias-theme-light .alias-page-bg .text-slate-400 {
-  color: #64748b;
-}
-html.alias-theme-light .alias-page-bg .text-slate-200 {
-  color: #334155;
-}
-html.alias-theme-light .alias-page-bg .bg-white\/5 {
-  background-color: rgba(15, 23, 42, 0.06);
-}
-html.alias-theme-light .alias-page-bg .ring-white\/10 {
-  --tw-ring-color: rgba(15, 23, 42, 0.12);
-}
-html.alias-theme-light .alias-page-bg .hover\:bg-white\/10:hover {
-  background-color: rgba(15, 23, 42, 0.08);
-}
-html.alias-theme-light .alias-page-bg input,
-html.alias-theme-light .alias-page-bg select {
-  background-color: rgba(255, 255, 255, 0.9);
-  color: #0f172a;
-}
-html.alias-theme-light .alias-divider {
-  border-top-color: rgba(15, 23, 42, 0.08);
 }
