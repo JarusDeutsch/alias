@@ -82,3 +82,8 @@ export function playLose() {
   playTone(349.23, 140, { startOffset: 0.1 })
   playTone(293.66, 160, { startOffset: 0.22 })
 }
+
+/** Тик «последние 5 секунд» раунда — короткий нейтральный тон */
+export function playTick() {
+  playTone(440, 40, { gain: 0.5 })
+}

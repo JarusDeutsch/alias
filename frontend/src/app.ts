@@ -1,6 +1,8 @@
-import { getLocale, type Locale, LOCALES, pluralWords, setLocale, t } from './i18n'
+import { getLocale, type Locale, LOCALES, pluralPoints, pluralWords, setLocale, t } from './i18n'
 import { log, exposeToWindow } from './logger'
-import { playCorrect, playDontKnow, playLose, playSkip, playWin } from './sounds'
+import QRCode from 'qrcode'
+import { drawShareCard, shareCardBlobAsFile, type ShareCardParams } from './share-card'
+import { playCorrect, playDontKnow, playLose, playSkip, playTick, playWin } from './sounds'
 
 exposeToWindow()
 
@@ -127,6 +129,7 @@ const BUILD_VERSION = buildVersion()
 if (appEl) appEl.dataset.build = BUILD_VERSION
 
 setLocale(getLocale())
+applyTheme()
 
 const PLAYER_NAME_MIN_LEN = 1
 const PLAYER_NAME_MAX_LEN = 64
@@ -140,13 +143,25 @@ const CONFIG_MAX_ROUNDS_MIN = 1
 const CONFIG_MAX_ROUNDS_MAX = 100
 
 const TAGLINES = [
-  'ЛЛДВМ❤️', 
+  'ЛЛДВМ❤️',
   'For vibe',
   'by Jarus',
   'Йоу',
   'Шо ты?',
+  'Играй в слова',
+  'Угадайка',
+  'Alias онлайн',
 ]
 const tagline = TAGLINES[Math.floor(Math.random() * TAGLINES.length)]
+
+const WORD_OF_DAY_LIST = [
+  'кофе', 'книга', 'солнце', 'море', 'дождь', 'окно', 'друг', 'счастье', 'музыка', 'путешествие',
+  'пицца', 'телефон', 'компьютер', 'кошка', 'собака', 'цветок', 'горы', 'река', 'звезда', 'луна',
+]
+function wordOfDay(): string {
+  const day = Math.floor(Date.now() / 86400000)
+  return WORD_OF_DAY_LIST[day % WORD_OF_DAY_LIST.length]
+}
 
 let toastHideTimer: number | null = null
 let toastLeaveHideTimer: number | null = null
@@ -175,6 +190,12 @@ const store = {
   isMobile: false,
   copiedRoomCode: null as string | null,
   copiedRoomCodeTimerId: null as number | null,
+  shareModalOpen: false,
+  shareCardPreviewUrl: null as string | null,
+  shareCardBlob: null as Blob | null,
+  lastTickSecond: null as number | null,
+  theme: (localStorage.getItem('alias_theme') as 'dark' | 'light') ?? 'dark',
+  firstVisitDone: localStorage.getItem('alias_first_visit_done') === '1',
 }
 
 function showToast(message: string) {
@@ -212,6 +233,11 @@ function save() {
 
 function escapeHtml(s: string) {
   return s.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;')
+}
+
+function applyTheme() {
+  const isLight = store.theme === 'light'
+  document.documentElement.classList.toggle('alias-theme-light', isLight)
 }
 
 function configKey(c: GameConfig): string {
@@ -458,6 +484,14 @@ function updateTimerTexts() {
   wrap.classList.toggle('alias-timer-red', isRed)
   wrap.classList.remove('hidden')
 
+  // Звук «последние 5 секунд» — один тик на каждую секунду 5,4,3,2,1
+  const sec = ms === null ? null : Math.ceil(ms / 1000)
+  if (sec !== null && sec <= 5 && sec >= 1 && sec !== store.lastTickSecond) {
+    store.lastTickSecond = sec
+    playTick()
+  }
+  if (sec === null || sec > 5) store.lastTickSecond = null
+
   // Красный отлив фона при остатке ≤10% — обновляем в тике, чтобы не ждать следующего render()
   const pageBg = document.querySelector('.alias-page-bg') as HTMLElement | null
   if (pageBg) {
@@ -498,6 +532,10 @@ function render() {
           `<button type="button" class="alias-lang-btn min-w-[2.25rem] rounded-md px-2 py-1.5 text-sm font-medium transition-colors ${getLocale() === loc.code ? 'bg-indigo-500/80 text-white' : 'text-slate-400 hover:bg-white/10 hover:text-slate-200'}" data-locale="${loc.code}" title="${escapeHtml(loc.native)}">${loc.label}</button>`,
       ).join('')}
     </div>`
+  const themeToggle = `
+    <button type="button" id="themeToggle" class="alias-theme-toggle inline-flex h-9 w-9 items-center justify-center rounded-lg bg-white/5 ring-1 ring-white/10 hover:bg-white/10 text-slate-300 hover:text-slate-100" title="${store.theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}" aria-label="Тема">
+      ${store.theme === 'dark' ? '<svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>' : '<svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>'}
+    </button>`
   const header = `
     <div class="flex items-center justify-between gap-3">
       <div>
@@ -508,6 +546,7 @@ function render() {
             ${reconnectBtn}
           </div>
           ${langSwitcher}
+          ${themeToggle}
         </div>
         <h1 class="mt-2 text-3xl font-semibold tracking-tight">Alias Web</h1>
         <p class="mt-1 text-base text-slate-300">${escapeHtml(tagline)}</p>
@@ -533,6 +572,7 @@ function render() {
     </div>`
       : ''
 
+  const shareModalHtml = store.shareModalOpen ? renderShareModal() : ''
   const mainContent = `
     <div class="alias-page-bg min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-slate-100">
       <div class="relative z-10 mx-auto max-w-[1520px] px-4 py-8">
@@ -541,6 +581,7 @@ function render() {
       </div>
     </div>
     ${wordsUploadEl}
+    ${shareModalHtml}
   `
 
   let mainEl = document.getElementById('aliasMain')
@@ -558,6 +599,27 @@ function render() {
   wireHandlers()
 }
 
+function renderShareModal(): string {
+  const previewUrl = store.shareCardPreviewUrl
+  const hasBlob = !!store.shareCardBlob
+  const previewContent = previewUrl
+    ? `<img src="${previewUrl}" alt="" class="max-h-[280px] w-auto rounded-lg ring-1 ring-white/10 object-contain" />`
+    : `<div class="flex items-center justify-center py-16"><span class="alias-spinner"></span></div>`
+  return `
+    <div id="shareModalBackdrop" class="alias-share-modal-backdrop fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" role="dialog" aria-modal="true" aria-label="${escapeHtml(t('share_card_preview'))}">
+      <div class="alias-share-modal-content rounded-xl bg-slate-800/95 p-6 ring-1 ring-white/10 shadow-xl max-w-lg w-full" onclick="event.stopPropagation()">
+        <div class="text-base font-semibold text-slate-100">${t('share_card_preview')}</div>
+        <div class="mt-4 flex justify-center rounded-lg bg-slate-900/50 min-h-[200px]">${previewContent}</div>
+        <div class="mt-4 flex flex-wrap gap-2 justify-end">
+          <button id="shareModalClose" type="button" class="rounded-md bg-white/10 px-4 py-2 text-sm font-medium text-slate-200 ring-1 ring-white/10 hover:bg-white/15">${t('share_modal_close')}</button>
+          <button id="shareModalDownload" type="button" class="rounded-md bg-emerald-500/90 px-4 py-2 text-sm font-semibold text-emerald-950 hover:bg-emerald-400 disabled:opacity-50" ${hasBlob ? '' : 'disabled'}>${t('share_download')}</button>
+          <button id="shareModalShare" type="button" class="rounded-md bg-indigo-500 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-400 disabled:opacity-50" ${hasBlob ? '' : 'disabled'}>${t('share_share')}</button>
+        </div>
+      </div>
+    </div>
+  `
+}
+
 function renderLobbyLayout() {
   return `
     <div class="grid gap-8 lg:grid-cols-2">
@@ -572,9 +634,18 @@ function renderLobbyCard() {
   const fromUrl = roomCodeFromUrl !== null && store.roomCode.trim().toUpperCase() === roomCodeFromUrl
   const codeDisplay = escapeHtml(store.roomCode.trim().toUpperCase() || roomCodeFromUrl || '')
 
+  const firstVisitBanner = !store.firstVisitDone
+    ? `
+    <div class="mb-4 rounded-md bg-indigo-500/15 px-4 py-3 ring-1 ring-indigo-500/30">
+      <p class="text-sm text-indigo-100/95">Введите имя и код комнаты. Загадывающий может нажимать клавиши <kbd class="rounded bg-white/20 px-1">1</kbd>, <kbd class="rounded bg-white/20 px-1">2</kbd>, <kbd class="rounded bg-white/20 px-1">3</kbd> для быстрой отметки слова.</p>
+      <button id="dismissFirstVisit" type="button" class="mt-2 text-sm font-medium text-indigo-200 underline decoration-dotted hover:text-indigo-100">Понятно</button>
+    </div>`
+    : ''
+
   return `
     <h2 class="text-lg font-semibold">${t('lobby_title')}</h2>
     <p class="mt-1 text-base text-slate-300">${t('lobby_subtitle')}</p>
+    ${firstVisitBanner}
 
     <div class="mt-5 grid gap-3">
       <label class="grid gap-1">
@@ -636,8 +707,13 @@ function renderLobbyCard() {
 }
 
 function renderHelpCard() {
+  const wod = wordOfDay()
   return `
     <h2 class="text-lg font-semibold">${t('rules_title')}</h2>
+    <div class="mt-3 rounded-md bg-amber-500/10 px-3 py-2 ring-1 ring-amber-500/20">
+      <span class="text-sm font-medium text-amber-200/90">Слово дня</span>
+      <div class="mt-0.5 text-xl font-semibold text-amber-100">${escapeHtml(wod)}</div>
+    </div>
     <ul class="mt-4 grid gap-2 text-base text-slate-300">
       <li class="rounded-md bg-white/5 px-3 py-2 ring-1 ring-white/10">
         <span class="font-semibold text-slate-100">${t('rules_roles')}</span> ${t('rules_roles_desc')}
@@ -752,14 +828,17 @@ function renderTopBar(view: WsView) {
               <path d="M13 3h6a2 2 0 0 1 2 2z" />
             </svg>
           </button>
-          <div>
-            ${t('room')}
+          <div class="flex items-center gap-2">
+            <span>${t('room')}</span>
             <button
               type="button"
-              class="copyRoomCode ml-1 inline-flex items-center gap-1 font-mono tracking-widest underline decoration-dotted underline-offset-4 hover:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/60 ${store.copiedRoomCode === view.room.code ? 'text-emerald-400' : 'text-slate-100'}"
+              class="copyRoomCode inline-flex items-center gap-1 font-mono tracking-widest underline decoration-dotted underline-offset-4 hover:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/60 ${store.copiedRoomCode === view.room.code ? 'text-emerald-400' : 'text-slate-100'}"
               title="${t('copy_room_code_title')}"
               data-roomcode="${escapeHtml(view.room.code)}"
             >${store.copiedRoomCode === view.room.code ? t('copied') : `/${escapeHtml(view.room.code)}`}</button>
+            <div id="roomQrWrap" class="alias-room-qr flex shrink-0" data-roomcode="${escapeHtml(view.room.code)}" title="QR: jarusdev.com/${escapeHtml(view.room.code)}">
+              <img id="roomQrImg" alt="QR в комнату" width="56" height="56" class="rounded border border-white/10 bg-white" />
+            </div>
           </div>
         </div>
       </div>
@@ -896,6 +975,15 @@ function renderCenterPanel(view: WsView) {
       const delay = (i * 0.08) + 0.2
       return `<span class="alias-confetti-piece absolute h-2 w-1 rounded-full opacity-90 ${color}" style="left:${left}%; animation-delay:${delay}s"></span>`
     }).join('')
+    const myTeam = view.me.team_id ? teams.find((t) => t.id === view.me.team_id) : null
+    const canShare = !!myTeam
+    const shareBtn = canShare
+      ? `<button id="shareResultBtn" type="button" class="mt-4 w-full rounded-md bg-white/10 px-4 py-3 text-base font-semibold text-white ring-1 ring-white/10 hover:bg-white/15 transition-opacity inline-flex items-center justify-center gap-2">
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            ${t('share_result_btn')}
+          </button>`
+      : ''
+
     return `
       <div class="alias-game-over-wrap text-base text-slate-300">${t('game_over')}</div>
       <div class="alias-game-over-confetti relative mt-3 overflow-hidden rounded-md bg-emerald-500/10 py-6 px-5 ring-2 ring-emerald-500/30">
@@ -906,9 +994,10 @@ function renderCenterPanel(view: WsView) {
           <div class="mt-5 grid gap-2">${teamsList}</div>
         </div>
       </div>
+      ${shareBtn}
       ${
         canRestart
-          ? `<button id="restartGame" class="mt-5 w-full rounded-md bg-white/10 px-4 py-3 text-base font-semibold text-white ring-1 ring-white/10 hover:bg-white/15 transition-opacity">
+          ? `<button id="restartGame" class="mt-4 w-full rounded-md bg-white/10 px-4 py-3 text-base font-semibold text-white ring-1 ring-white/10 hover:bg-white/15 transition-opacity">
               ${t('restart_game')}
             </button>`
           : ''
@@ -961,7 +1050,7 @@ function renderCenterPanel(view: WsView) {
       <div class="mt-6 rounded-xl bg-gradient-to-br from-amber-950/30 via-slate-700/25 to-slate-800/40 p-5 ring-1 ring-white/10 flex flex-col min-h-[140px] sm:min-h-[180px]">
         <div class="text-xs font-medium uppercase tracking-[0.18em] text-slate-400">${t('current_word')}</div>
         <div class="mt-2 flex flex-1 items-center justify-center">
-          <div class="text-center text-4xl sm:text-5xl font-semibold tracking-tight text-white">${escapeHtml(currentWord)}</div>
+          <div class="alias-word-appear text-center text-4xl sm:text-5xl font-semibold tracking-tight text-white">${escapeHtml(currentWord)}</div>
         </div>
       </div>
 
@@ -1220,7 +1309,9 @@ function renderRoundHistory(team: TeamPrivateView, onlyCurrent: boolean, editabl
                         <button type="button" class="setWordOutcomeBtn rounded-md bg-rose-500/80 px-2 py-1 text-sm text-white hover:bg-rose-400 disabled:opacity-50${sel('skip')}" data-outcome="skip"${dis}>−1</button>
                       </div>`
                     : tag
-                return `<li class="flex items-center justify-between gap-3 rounded-md bg-white/5 px-3 py-2 ring-1 ring-white/10">
+                const isLastCorrect = wordIdx === events.length - 1 && e.outcome === 'correct'
+                const liClass = `flex items-center justify-between gap-3 rounded-md bg-white/5 px-3 py-2 ring-1 ring-white/10${isLastCorrect ? ' alias-last-correct-pulse' : ''}`
+                return `<li class="${liClass}">
                   <span class="text-base font-medium text-slate-100">${escapeHtml(e.word)}</span>
                   ${buttons}
                 </li>`
@@ -1673,6 +1764,16 @@ function wireHandlers() {
     }
   })
 
+  ;(document.getElementById('dismissFirstVisit') as HTMLButtonElement | null)?.addEventListener('click', () => {
+    store.firstVisitDone = true
+    try {
+      localStorage.setItem('alias_first_visit_done', '1')
+    } catch {
+      // ignore
+    }
+    render()
+  })
+
   ;(document.getElementById('createRoom') as HTMLButtonElement | null)?.addEventListener('click', () => void createRoom())
   ;(document.getElementById('loadRoom') as HTMLButtonElement | null)?.addEventListener('click', () => void loadRoomInfo())
   ;(document.getElementById('enterRoom') as HTMLButtonElement | null)?.addEventListener('click', () => void ensureJoinedSpectator(store.roomCode))
@@ -1731,6 +1832,17 @@ function wireHandlers() {
 
   // copyRoomCode обрабатывается через делегирование в init (чтобы работало и после частичного обновления поля кода комнаты)
 
+  ;(document.getElementById('themeToggle') as HTMLButtonElement | null)?.addEventListener('click', () => {
+    store.theme = store.theme === 'dark' ? 'light' : 'dark'
+    try {
+      localStorage.setItem('alias_theme', store.theme)
+    } catch {
+      // ignore
+    }
+    applyTheme()
+    render()
+  })
+
   ;(document.getElementById('toggleSettings') as HTMLButtonElement | null)?.addEventListener('click', () => {
     store.settingsOpen = !store.settingsOpen
     render()
@@ -1745,6 +1857,76 @@ function wireHandlers() {
 
   ;(document.getElementById('restartGame') as HTMLButtonElement | null)?.addEventListener('click', () => void restartGame())
   ;(document.getElementById('restartGameInSettings') as HTMLButtonElement | null)?.addEventListener('click', () => void restartGame())
+
+  ;(document.getElementById('shareResultBtn') as HTMLButtonElement | null)?.addEventListener('click', () => {
+    const view = store.view
+    if (!view?.room?.game_over || !view.me.team_id) return
+    const myTeam = view.room.teams?.find((t) => t.id === view.me.team_id)
+    if (!myTeam) return
+    store.shareModalOpen = true
+    store.shareCardPreviewUrl = null
+    store.shareCardBlob = null
+    render()
+    const params: ShareCardParams = {
+      isWinner: view.room.winner_team_id === view.me.team_id,
+      teamName: myTeam.name,
+      scoreLabel: `${myTeam.score} ${pluralPoints(myTeam.score)}`,
+      titleWon: t('share_we_won'),
+      titleLost: t('share_we_lost'),
+      brandText: t('share_brand'),
+    }
+    drawShareCard(params)
+      .then((blob) => {
+        if (store.shareCardPreviewUrl) URL.revokeObjectURL(store.shareCardPreviewUrl)
+        store.shareCardBlob = blob
+        store.shareCardPreviewUrl = URL.createObjectURL(blob)
+        render()
+      })
+      .catch(() => {
+        store.shareModalOpen = false
+        render()
+      })
+  })
+
+  ;(document.getElementById('shareModalBackdrop') as HTMLElement | null)?.addEventListener('click', () => {
+    if (store.shareCardPreviewUrl) URL.revokeObjectURL(store.shareCardPreviewUrl)
+    store.shareModalOpen = false
+    store.shareCardPreviewUrl = null
+    store.shareCardBlob = null
+    render()
+  })
+  ;(document.getElementById('shareModalClose') as HTMLButtonElement | null)?.addEventListener('click', () => {
+    if (store.shareCardPreviewUrl) URL.revokeObjectURL(store.shareCardPreviewUrl)
+    store.shareModalOpen = false
+    store.shareCardPreviewUrl = null
+    store.shareCardBlob = null
+    render()
+  })
+  ;(document.getElementById('shareModalDownload') as HTMLButtonElement | null)?.addEventListener('click', () => {
+    if (store.shareCardBlob) {
+      shareCardBlobAsFile(store.shareCardBlob, 'alias-result.png')
+      showToast(t('share_download'))
+    }
+  })
+  ;(document.getElementById('shareModalShare') as HTMLButtonElement | null)?.addEventListener('click', async () => {
+    if (!store.shareCardBlob) return
+    const file = new File([store.shareCardBlob], 'alias-result.png', { type: 'image/png' })
+    if (navigator.share && navigator.canShare?.({ files: [file] })) {
+      try {
+        await navigator.share({
+          title: t('share_brand'),
+          text: store.view?.room?.winner_team_id === store.view?.me?.team_id ? t('share_we_won') : t('share_we_lost'),
+          files: [file],
+        })
+        showToast(t('share_share'))
+      } catch (e) {
+        if ((e as Error).name !== 'AbortError') shareCardBlobAsFile(store.shareCardBlob!, 'alias-result.png')
+      }
+    } else {
+      shareCardBlobAsFile(store.shareCardBlob, 'alias-result.png')
+      showToast(t('share_download'))
+    }
+  })
 
   // joinTeamBtn и becomeSpectatorBtn обрабатываются через делегирование в init
 
@@ -1810,6 +1992,22 @@ function wireHandlers() {
   targetEl?.addEventListener('input', updateDraftFromUi)
   roundSecEl?.addEventListener('blur', syncDraftAndApply)
   targetEl?.addEventListener('blur', syncDraftAndApply)
+
+  // QR комнаты: генерируем после рендера, один раз на код комнаты
+  const roomQrWrap = document.getElementById('roomQrWrap')
+  const roomQrImg = document.getElementById('roomQrImg')
+  if (roomQrWrap && roomQrImg && roomQrImg instanceof HTMLImageElement) {
+    const code = roomQrWrap.getAttribute('data-roomcode')
+    if (code && roomQrImg.dataset.qrCode !== code) {
+      const url = `https://jarusdev.com/${code}`
+      QRCode.toDataURL(url, { width: 56, margin: 1 })
+        .then((dataUrl) => {
+          roomQrImg.src = dataUrl
+          roomQrImg.dataset.qrCode = code
+        })
+        .catch(() => {})
+    }
+  }
 }
 
 // Делегирование: копирование кода комнаты (работает и для кнопки, вставленной при вводе кода без полного render)
@@ -1927,6 +2125,24 @@ render()
 if (store.playerId) {
   void connectWs(false)
 }
+
+// Easter egg: Konami code ↑↑↓↓←→←→BA
+const KONAMI_SEQUENCE = [38, 38, 40, 40, 37, 39, 37, 39, 66, 65]
+let konamiIndex = 0
+document.addEventListener('keydown', (e) => {
+  const code = e.keyCode || e.which
+  if (code === KONAMI_SEQUENCE[konamiIndex]) {
+    konamiIndex++
+    if (konamiIndex === KONAMI_SEQUENCE.length) {
+      konamiIndex = 0
+      const msg = TAGLINES[Math.floor(Math.random() * TAGLINES.length)]
+      showToast(msg)
+      playWin()
+    }
+  } else {
+    konamiIndex = 0
+  }
+})
 
 // Горячие клавиши для загадывающего: 1 — Угадал, 2 — Не знаю, 3 — Пропуск
 document.addEventListener('keydown', (e) => {

@@ -169,6 +169,15 @@ const translations: Record<Locale, Messages> = {
     tab_team: 'Команда',
     tab_controls: 'Управление',
     team_default_name: 'Команда {{n}}',
+    // Share card
+    share_result_btn: 'Поделиться результатом',
+    share_download: 'Скачать карточку',
+    share_share: 'Поделиться',
+    share_we_won: 'Мы победили!',
+    share_we_lost: 'Мы проиграли',
+    share_brand: 'Alias Web',
+    share_card_preview: 'Карточка для Telegram / Discord',
+    share_modal_close: 'Закрыть',
   },
   uk: {
     err_enter_name: 'Введіть ім\'я',
@@ -315,6 +324,14 @@ const translations: Record<Locale, Messages> = {
     tab_team: 'Команда',
     tab_controls: 'Керування',
     team_default_name: 'Команда {{n}}',
+    share_result_btn: 'Поділитися результатом',
+    share_download: 'Завантажити картку',
+    share_share: 'Поділитися',
+    share_we_won: 'Ми перемогли!',
+    share_we_lost: 'Ми програли',
+    share_brand: 'Alias Web',
+    share_card_preview: 'Картка для Telegram / Discord',
+    share_modal_close: 'Закрити',
   },
   en: {
     err_enter_name: 'Enter your name',
@@ -461,6 +478,14 @@ const translations: Record<Locale, Messages> = {
     tab_team: 'Team',
     tab_controls: 'Controls',
     team_default_name: 'Team {{n}}',
+    share_result_btn: 'Share result',
+    share_download: 'Download card',
+    share_share: 'Share',
+    share_we_won: 'We won!',
+    share_we_lost: 'We lost',
+    share_brand: 'Alias Web',
+    share_card_preview: 'Card for Telegram / Discord',
+    share_modal_close: 'Close',
   },
 }
 
@@ -503,6 +528,24 @@ export function pluralWords(n: number): string {
     return 'слів'
   }
   return n === 1 ? 'word' : 'words'
+}
+
+/** Склонение «очко/очка/очков» по числу n для карточки шеринга */
+export function pluralPoints(n: number): string {
+  const locale = currentLocale
+  const mod10 = n % 10
+  const mod100 = n % 100
+  if (locale === 'ru') {
+    if (mod10 === 1 && mod100 !== 11) return 'очко'
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return 'очка'
+    return 'очков'
+  }
+  if (locale === 'uk') {
+    if (mod10 === 1 && mod100 !== 11) return 'очко'
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return 'очка'
+    return 'очок'
+  }
+  return n === 1 ? 'point' : 'points'
 }
 
 export function setLocale(locale: Locale) {
