@@ -921,8 +921,9 @@ function renderCenterPanel(view: WsView) {
   const waitingHint = showAsGuesser && activeTeam && activeTeam.id !== team.id
     ? `<div class="mt-1 text-base text-slate-400">${t('waiting_other_team')}</div>`
     : ''
+  const roleLabel = isCluegiver && !myTeamIsPlaying ? t('you_cluegiver') : t('you_guesser')
   return `
-    <div class="text-base text-slate-300">${t('you_guesser')}${waitingHint}</div>
+    <div class="text-base text-slate-300">${roleLabel}${waitingHint}</div>
     ${myTeamIsPlaying ? timer : (activeTeam && activeTeam.id !== team.id ? '' : timer)}
     ${myTeamIsPlaying ? guesserTimerExpiredHint : ''}
     <div class="mt-6 rounded-md bg-white/5 p-7 ring-1 ring-white/10">
