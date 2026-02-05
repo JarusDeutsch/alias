@@ -235,13 +235,20 @@ class StateStore:
         rng.shuffle(player_ids)
         team_ids = list(room.team_ids)
 
-        # распределим по командам по кругу; роли пока всем угадывающий
+        # Распределение по кругу (round-robin): при количестве игроков, кратном количеству
+        # команд, во всех командах будет поровну; иначе — допустимо ровно на 1 больше в части команд.
         for i, pid in enumerate(player_ids):
             tid = team_ids[i % len(team_ids)]
             p = self.state.players[pid]
             p.team_id = tid
             p.role = PlayerRole.guesser
             self.state.teams[tid].player_ids.append(pid)
+
+        n_players, n_teams = len(player_ids), len(team_ids)
+        if n_teams and n_players % n_teams == 0:
+            expected = n_players // n_teams
+            for tid in team_ids:
+                assert len(self.state.teams[tid].player_ids) == expected, "equal teams when divisible"
 
         # в каждой команде выбираем одного загадывающего (если есть игроки)
         for tid in team_ids:

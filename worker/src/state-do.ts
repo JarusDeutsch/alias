@@ -522,6 +522,7 @@ export class AliasState implements DurableObject {
     }
     shuffle(playerIds)
     const teamIds = [...room.team_ids]
+    // Round-robin: when player count is divisible by team count, all teams get equal size; otherwise some get one more.
     for (let i = 0; i < playerIds.length; i++) {
       const pid = playerIds[i]
       const tid = teamIds[i % teamIds.length]
@@ -529,6 +530,16 @@ export class AliasState implements DurableObject {
       p.team_id = tid
       p.role = 'guesser'
       this.state.teams[tid].player_ids.push(pid)
+    }
+    const nPlayers = playerIds.length
+    const nTeams = teamIds.length
+    if (nTeams && nPlayers % nTeams === 0) {
+      const expected = nPlayers / nTeams
+      for (const tid of teamIds) {
+        if (this.state.teams[tid].player_ids.length !== expected) {
+          throw new Error('equal_teams_when_divisible')
+        }
+      }
     }
     for (const tid of teamIds) {
       const t = this.state.teams[tid]
