@@ -305,27 +305,56 @@ function remainingSecondsFromEndAt(roundEndsAt: string | null | undefined): numb
   return Math.max(0, Math.ceil((end - store.nowMs) / 1000))
 }
 
-/** Оставшееся время текущего раунда для отображения (своя команда или активная) */
+let cachedRemain: { sec: number; ms: number; roundEndsAt: string } | null = null
+
+/** Оставшееся время текущего раунда для отображения (своя команда или активная). Кэш убирает мигание при обновлении state. */
 function displayRemainingSeconds(view: WsView | null): number | null {
   if (!view?.room?.config) return null
+  const inRound = view.my_team?.round_active || !!view.active_team
   const team = view.my_team
-  if (team?.round_active && team.round_ends_at) return remainingSecondsFromEndAt(team.round_ends_at)
-  const active = view.active_team
-  if (active?.round_ends_at) return remainingSecondsFromEndAt(active.round_ends_at)
+  let sec: number | null = null
+  let endAt: string | null = null
+  if (team?.round_active && team.round_ends_at) {
+    endAt = team.round_ends_at
+    sec = remainingSecondsFromEndAt(team.round_ends_at)
+  }
+  if (sec === null && view.active_team?.round_ends_at) {
+    endAt = view.active_team.round_ends_at
+    sec = remainingSecondsFromEndAt(view.active_team.round_ends_at)
+  }
+  if (sec !== null && endAt) {
+    const end = Date.parse(endAt)
+    cachedRemain = { sec, ms: Math.max(0, end - store.nowMs), roundEndsAt: endAt }
+    return sec
+  }
+  if (inRound && cachedRemain) return cachedRemain.sec
+  cachedRemain = null
   return null
 }
 
 function displayRemainingMs(view: WsView | null): number | null {
   if (!view?.room?.config) return null
+  const inRound = view.my_team?.round_active || !!view.active_team
   const team = view.my_team
+  let ms: number | null = null
+  let endAt: string | null = null
   if (team?.round_active && team.round_ends_at) {
+    endAt = team.round_ends_at
     const end = Date.parse(team.round_ends_at)
-    return Number.isNaN(end) ? null : Math.max(0, end - store.nowMs)
+    ms = Number.isNaN(end) ? null : Math.max(0, end - store.nowMs)
   }
-  const active = view.active_team
-  if (!active?.round_ends_at) return null
-  const end = Date.parse(active.round_ends_at)
-  return Number.isNaN(end) ? null : Math.max(0, end - store.nowMs)
+  if (ms === null && view.active_team?.round_ends_at) {
+    endAt = view.active_team.round_ends_at
+    const end = Date.parse(view.active_team.round_ends_at)
+    ms = Number.isNaN(end) ? null : Math.max(0, end - store.nowMs)
+  }
+  if (ms !== null && endAt) {
+    cachedRemain = cachedRemain ? { ...cachedRemain, ms, roundEndsAt: endAt } : { sec: Math.ceil(ms / 1000), ms, roundEndsAt: endAt }
+    return ms
+  }
+  if (inRound && cachedRemain) return cachedRemain.ms
+  cachedRemain = null
+  return null
 }
 
 function remainingMs(team: TeamPrivateView | null): number | null {
@@ -393,6 +422,8 @@ function updateTimerTexts() {
     bar.style.width = '0%'
     bar.style.backgroundImage = ''
     digits.textContent = ''
+    const pageBg = document.querySelector('.alias-page-bg') as HTMLElement | null
+    if (pageBg) pageBg.classList.remove('alias-page-bg-red-tint')
     return
   }
 
@@ -414,6 +445,13 @@ function updateTimerTexts() {
   const isRed = frac <= 0.1 && frac > 0
   wrap.classList.toggle('alias-timer-red', isRed)
   wrap.classList.remove('hidden')
+
+  // Красный отлив фона при остатке ≤10% — обновляем в тике, чтобы не ждать следующего render()
+  const pageBg = document.querySelector('.alias-page-bg') as HTMLElement | null
+  if (pageBg) {
+    const isLowTime = totalMs > 0 && ms <= totalMs * 0.1 && ms > 0
+    pageBg.classList.toggle('alias-page-bg-red-tint', isLowTime)
+  }
 }
 
 function render() {
@@ -483,13 +521,8 @@ function render() {
     </div>`
       : ''
 
-  const displayRemainGlobal = view ? displayRemainingSeconds(view) : null
-  const totalSecondsGlobal = view?.room?.config?.round_seconds ?? 60
-  const isLowTime = displayRemainGlobal !== null && totalSecondsGlobal > 0 && displayRemainGlobal <= totalSecondsGlobal * 0.1
-  const pageBgClass = `alias-page-bg min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-slate-100${isLowTime ? ' alias-page-bg-red-tint' : ''}`
-
   const mainContent = `
-    <div class="${pageBgClass}">
+    <div class="alias-page-bg min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-slate-100">
       <div class="relative z-10 mx-auto max-w-[1520px] px-4 py-8">
         <div id="aliasHeaderWrap">${header}</div>
         <div id="aliasBodyWrap" class="alias-divider mt-8 pt-8">${body}</div>
