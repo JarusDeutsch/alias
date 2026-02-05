@@ -583,10 +583,12 @@ export class AliasState implements DurableObject {
       throw new Error('max_rounds_reached_for_team')
     }
     // Очерёдность: раунд 1 — команда 0, раунд 2 — команда 1, раунд 3 — команда 0, ...
-    const totalRounds = room.team_ids.reduce((sum, tid) => sum + (this.state.teams[tid]?.round_number ?? 0), 0)
-    const nextIndex = totalRounds % room.team_ids.length
-    const teamThatCanStart = room.team_ids[nextIndex]
-    if (teamId !== teamThatCanStart) throw new Error('not_your_turn')
+    const teamIds = room.team_ids
+    if (!Array.isArray(teamIds) || teamIds.length === 0) throw new Error('no_teams')
+    const totalRounds = teamIds.reduce((sum, tid) => sum + (this.state.teams[tid]?.round_number ?? 0), 0)
+    const nextIndex = totalRounds % teamIds.length
+    const teamThatCanStartId = teamIds[nextIndex]
+    if (String(teamId) !== String(teamThatCanStartId)) throw new Error('not_your_turn')
     team.round_number += 1
     team.round_active = true
     team.round_started_at = nowISO()
@@ -827,7 +829,21 @@ export class AliasState implements DurableObject {
       const t = this.state.teams[activeTeamId]
       activeTeam = { id: t.id, name: t.name, rounds: t.rounds }
     }
-    return { room: roomView, me, my_team: myTeam, spectator_teams: spectatorTeams, active_team: activeTeam }
+    // Чья очередь начинать следующий раунд (для блокировки кнопки на фронте)
+    const teamIds = room.team_ids
+    const totalRounds = Array.isArray(teamIds) && teamIds.length > 0
+      ? teamIds.reduce((sum, tid) => sum + (this.state.teams[tid]?.round_number ?? 0), 0)
+      : 0
+    const nextTurnIndex = Array.isArray(teamIds) && teamIds.length > 0 ? totalRounds % teamIds.length : 0
+    const canStartRoundTeamId = Array.isArray(teamIds) && teamIds.length > 0 ? teamIds[nextTurnIndex] : null
+    return {
+      room: roomView,
+      me,
+      my_team: myTeam,
+      spectator_teams: spectatorTeams,
+      active_team: activeTeam,
+      can_start_round_team_id: canStartRoundTeamId,
+    }
   }
 }
 

@@ -167,6 +167,7 @@ class WsStateView(BaseModel):
     my_team: Optional[dict] = None  # TeamPrivateView (+ current_word for cluegiver)
     spectator_teams: Optional[List[dict]] = None  # TeamPrivateView без current_word (для наблюдателя)
     active_team: Optional[ActiveTeamView] = None  # команда с round_active (id, name, rounds)
+    can_start_round_team_id: Optional[UUID] = None  # id команды, которой разрешено начать следующий раунд
 
 
 class WsClientHello(BaseModel):

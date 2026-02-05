@@ -576,11 +576,20 @@ class StateStore:
                 active_team = ActiveTeamView(id=t.id, name=t.name, rounds=t.rounds)
                 break
 
+        total_rounds = sum(
+            self.state.teams[tid].round_number for tid in room.team_ids if self.state.teams.get(tid)
+        )
+        can_start_round_team_id = None
+        if room.team_ids:
+            next_idx = total_rounds % len(room.team_ids)
+            can_start_round_team_id = room.team_ids[next_idx]
+
         return WsStateView(
             room=room_view,
             me=me,
             my_team=my_team,
             spectator_teams=spectator_teams,
             active_team=active_team,
+            can_start_round_team_id=can_start_round_team_id,
         ).model_dump(mode="json")
 

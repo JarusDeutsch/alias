@@ -1,5 +1,8 @@
 import { getLocale, type Locale, LOCALES, setLocale, t } from './i18n'
+import { log, exposeToWindow } from './logger'
 import { playCorrect, playDontKnow, playLose, playSkip, playWin } from './sounds'
+
+exposeToWindow()
 
 type PlayerRole = 'cluegiver' | 'guesser' | 'spectator'
 type GameMode = 'to_words' | 'to_rounds'
@@ -81,6 +84,8 @@ type WsView = {
   my_team: TeamPrivateView | null
   spectator_teams?: TeamPrivateView[] | null
   active_team?: ActiveTeamView | null
+  /** id команды, которой разрешено начать следующий раунд (с сервера) */
+  can_start_round_team_id?: string | null
 }
 
 type WsState = { type: 'state'; view: WsView }
@@ -1013,10 +1018,10 @@ function renderRightPanel(view: WsView) {
       : ''
 
   const teamsList = view.room.teams ?? []
-  const totalRounds = teamsList.reduce((s, t) => s + t.round_number, 0)
-  const nextTurnIndex = teamsList.length ? totalRounds % teamsList.length : 0
-  const teamThatCanStart = teamsList[nextTurnIndex]
-  const canMyTeamStart = team && teamThatCanStart && team.id === teamThatCanStart.id
+  const canStartRoundTeamId = view.can_start_round_team_id ?? null
+  const fallbackNextIndex = teamsList.length ? (teamsList.reduce((s, t) => s + t.round_number, 0) % teamsList.length) : 0
+  const effectiveCanStartId = canStartRoundTeamId ?? teamsList[fallbackNextIndex]?.id ?? null
+  const canMyTeamStart = !!(team && effectiveCanStartId && String(team.id) === String(effectiveCanStartId))
 
   const controls =
     view.me.role === 'cluegiver' && view.me.team_id
@@ -1144,8 +1149,11 @@ function setError(id: string, message: string | null) {
 function sendWs(obj: unknown) {
   if (!store.ws || store.ws.readyState !== WebSocket.OPEN) {
     setError('rightError', 'Нет подключения к серверу.')
+    log('error', 'sendWs: нет подключения', { type: (obj as { type?: string })?.type })
     return
   }
+  const msg = obj as { type?: string }
+  log('ws', '→ отправка', { type: msg.type, payload: msg })
   store.ws.send(JSON.stringify(obj))
 }
 
@@ -1155,9 +1163,11 @@ async function connectWs(force: boolean) {
   store.ws?.close()
   store.ws = null
   const wsUrl = `${API_BASE.replace('http', 'ws')}/ws`
+  log('ws', 'подключение', { url: wsUrl, playerId: store.playerId })
   const ws = new WebSocket(wsUrl)
   store.ws = ws
   ws.onopen = () => {
+    log('ws', 'соединение открыто, отправка hello', { player_id: store.playerId })
     ws.send(JSON.stringify({ type: 'hello', player_id: store.playerId }))
     store.connecting = false
     store.reconnectAttempt = 0
@@ -1171,6 +1181,16 @@ async function connectWs(force: boolean) {
     try {
       const data = JSON.parse(ev.data) as WsState | WsError | WsPlayerLeft | WsLeft
       if (data.type === 'state') {
+        const v = data.view
+        log('state', '← state', {
+          room: v.room?.code,
+          game_over: v.room?.game_over,
+          me: { role: v.me?.role, team_id: v.me?.team_id ? '…' : null },
+          teams: v.room?.teams?.map((t) => ({ name: t.name, round_number: t.round_number, round_active: t.round_active })),
+          can_start_round_team_id: v.can_start_round_team_id ?? null,
+          my_team_round_active: v.my_team?.round_active,
+          active_team: v.active_team?.name ?? null,
+        })
         const prevGameOver = store.view?.room?.game_over
         store.view = data.view
         // После перезапуска игры сервер переводит всех в «Игроки без команды» — синхронизируем store.teamCode
@@ -1187,11 +1207,14 @@ async function connectWs(force: boolean) {
         }
         render()
       } else if (data.type === 'player_left') {
-        showToastLeave(`${escapeHtml(data.player_name)} покинул комнату`)
+        log('room', 'игрок вышел', { player_name: (data as WsPlayerLeft).player_name })
+        showToastLeave(`${escapeHtml((data as WsPlayerLeft).player_name)} покинул комнату`)
       } else if ((data as WsLeft).type === 'left') {
+        log('ws', '← left (выход из комнаты)')
         leaveRoomToLobby()
       } else {
         const err = data as WsError
+        log('error', '← ошибка от сервера', { message: err.message })
         const msg =
           err.message === 'cannot_change_word_pack_after_game_started'
             ? t('cannot_change_word_pack')
@@ -1206,6 +1229,7 @@ async function connectWs(force: boolean) {
     }
   }
   ws.onclose = () => {
+    log('ws', 'соединение закрыто')
     store.connecting = false
     store.ws = null
     render()
@@ -1222,6 +1246,7 @@ async function connectWs(force: boolean) {
     }
   }
   ws.onerror = () => {
+    log('error', 'WebSocket error')
     store.connecting = false
     setError('lobbyError', 'Не удалось подключиться к WebSocket. Проверьте, что бэкенд запущен на порту 8000.')
     render()
@@ -1269,6 +1294,7 @@ function applyDraftSettings() {
   if (!canEditSettings(store.view)) return
   store.settingsDirty = configKey(store.settingsDraft) !== configKey(store.view.room.config)
   if (!store.settingsDirty) return
+  log('action', 'применение настроек', { config: store.settingsDraft })
   sendWs({ type: 'update_settings', config: store.settingsDraft })
   showToast(t('settings_applied'))
 }
@@ -1304,6 +1330,7 @@ async function ensureJoinedSpectator(roomCode: string) {
 
   // если playerId уже есть и он из этой комнаты — просто переподключаем WS
   if (store.playerId && store.playerRoomCode === code) {
+    log('room', 'переподключение к комнате', { room_code: code })
     store.roomCode = code
     save()
     store.connecting = true
@@ -1317,6 +1344,7 @@ async function ensureJoinedSpectator(roomCode: string) {
     setError('lobbyError', null)
     store.lobbyLoadingMessage = 'Входим в комнату…'
     render()
+    log('room', 'вход в комнату', { room_code: code, player_name: name })
     const data = await fetchJson<{ room_id: string; player_id: string; team_id: string | null }>(
       `${API_BASE}/api/rooms/${code}/join`,
       { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ player_name: name, role: 'spectator' }) },
@@ -1342,6 +1370,7 @@ async function ensureJoinedSpectator(roomCode: string) {
 }
 
 function leaveRoomToLobby() {
+  log('room', 'выход из комнаты в лобби')
   // Возвращаемся на стартовый экран. Ник остаётся, чтобы было удобнее войти снова.
   history.pushState({}, '', '/')
   store.roomCode = ''
@@ -1391,6 +1420,7 @@ async function createRoom() {
     store.roomCode = data.room_code
     save()
     history.pushState({}, '', `/${store.roomCode}`)
+    log('room', 'комната создана', { room_code: data.room_code })
     await loadRoomInfo()
     store.lobbyLoadingMessage = null
     render()
@@ -1416,6 +1446,7 @@ async function joinTeamByCode(team_code: string, role: PlayerRole = 'guesser') {
     store.teamCode = team_code.toUpperCase()
     store.desiredRole = role
     save()
+    log('team', 'вступил в команду', { team_code: team_code.toUpperCase(), role })
   } catch (e) {
     setError('rightError', apiErrorMessage((e as Error).message))
   }
@@ -1454,6 +1485,7 @@ async function restartGame() {
   const roomCode = store.roomCode.trim().toUpperCase()
   if (!roomCode) return
   if (!store.playerId) return
+  log('action', 'перезапуск игры', { room_code: roomCode })
   try {
     setError('rightError', null)
     const data = await fetchJson<{ ok: boolean; view?: WsView }>(
@@ -1524,6 +1556,7 @@ function wireHandlers() {
   ;(document.getElementById('loadRoom') as HTMLButtonElement | null)?.addEventListener('click', () => void loadRoomInfo())
   ;(document.getElementById('enterRoom') as HTMLButtonElement | null)?.addEventListener('click', () => void ensureJoinedSpectator(store.roomCode))
   ;(document.getElementById('leaveRoom') as HTMLButtonElement | null)?.addEventListener('click', () => {
+    log('room', 'клик: Выйти из комнаты')
     if (store.ws?.readyState === WebSocket.OPEN) {
       sendWs({ type: 'leave_room' })
     } else {
@@ -1591,18 +1624,27 @@ function wireHandlers() {
 
   // joinTeamBtn и becomeSpectatorBtn обрабатываются через делегирование в init
 
-  ;(document.getElementById('startRound') as HTMLButtonElement | null)?.addEventListener('click', () => sendWs({ type: 'start_round' }))
-  ;(document.getElementById('endRound') as HTMLButtonElement | null)?.addEventListener('click', () => sendWs({ type: 'end_round' }))
+  ;(document.getElementById('startRound') as HTMLButtonElement | null)?.addEventListener('click', () => {
+    log('round', 'клик: Старт раунда')
+    sendWs({ type: 'start_round' })
+  })
+  ;(document.getElementById('endRound') as HTMLButtonElement | null)?.addEventListener('click', () => {
+    log('round', 'клик: Завершить раунд')
+    sendWs({ type: 'end_round' })
+  })
 
   ;(document.getElementById('markCorrect') as HTMLButtonElement | null)?.addEventListener('click', () => {
+    log('word', 'отметка: Угадал (+1)')
     playCorrect()
     sendWs({ type: 'mark', outcome: 'correct' })
   })
   ;(document.getElementById('markDontKnow') as HTMLButtonElement | null)?.addEventListener('click', () => {
+    log('word', 'отметка: Не знаю (0)')
     playDontKnow()
     sendWs({ type: 'mark', outcome: 'dont_know' })
   })
   ;(document.getElementById('markSkip') as HTMLButtonElement | null)?.addEventListener('click', () => {
+    log('word', 'отметка: Пропуск (-1)')
     playSkip()
     sendWs({ type: 'mark', outcome: 'skip' })
   })
@@ -1616,6 +1658,7 @@ function wireHandlers() {
     const wordIndex = parseInt(wrap.dataset.wordIndex ?? '', 10)
     const outcome = (btn.dataset.outcome ?? 'dont_know') as 'correct' | 'dont_know' | 'skip'
     if (Number.isNaN(roundIndex) || Number.isNaN(wordIndex)) return
+    log('word', 'изменение очка за слово', { round_index: roundIndex, word_index: wordIndex, outcome })
     setError('rightError', null)
     sendWs({ type: 'set_word_outcome', round_index: roundIndex, word_index: wordIndex, outcome })
   })
