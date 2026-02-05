@@ -433,10 +433,10 @@ function colorForFraction(frac: number): [number, number, number] {
 }
 
 function formatMmSs(totalSeconds: number) {
-  const s = Math.max(0, Math.floor(totalSeconds))
-  const m = Math.floor(s / 60)
-  const ss = String(s % 60).padStart(2, '0')
-  return `${m}:${ss}`
+  const sec = Math.max(0, Math.floor(totalSeconds))
+  const m = Math.floor(sec / 60)
+  const secStr = String(sec % 60).padStart(2, '0')
+  return `${m}:${secStr}`
 }
 
 function updateTimerTexts() {
