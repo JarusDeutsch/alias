@@ -100,8 +100,16 @@ const API_BASE =
     ? import.meta.env.VITE_API_BASE.replace(/\/$/, '')
     : `${window.location.protocol}//${window.location.hostname}:8000`
 const appEl = document.querySelector<HTMLDivElement>('#app')!
-const BUILD_ID = 'turn-order-v1'
-if (appEl) appEl.dataset.build = BUILD_ID
+
+declare const __BUILD_TIMESTAMP__: string | undefined
+function buildVersion(): string {
+  const ts = typeof __BUILD_TIMESTAMP__ !== 'undefined' ? __BUILD_TIMESTAMP__ : null
+  if (!ts) return 'dev'
+  const m = ts.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/)
+  return m ? `v${m[1]}.${m[2]}.${m[3]}.${m[4]}.${m[5]}` : ts.slice(0, 16)
+}
+const BUILD_VERSION = buildVersion()
+if (appEl) appEl.dataset.build = BUILD_VERSION
 
 setLocale(getLocale())
 
@@ -461,6 +469,7 @@ function render() {
     <div id="aliasMain"></div>
     <div id="aliasToast" class="pointer-events-none fixed bottom-4 left-1/2 z-50 hidden -translate-x-1/2 rounded-md bg-slate-950/80 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 backdrop-blur">toast</div>
     <div id="aliasToastLeave" class="pointer-events-none fixed bottom-4 left-1/2 z-50 hidden -translate-x-1/2 rounded-md bg-rose-600/95 px-3 py-1.5 text-sm text-white ring-1 ring-rose-400/30 backdrop-blur">leave</div>
+    <div class="alias-build-version fixed bottom-2 left-2 z-40 select-none font-mono text-xs text-slate-400/50" aria-hidden="true">${BUILD_VERSION}</div>
     `
     mainEl = document.getElementById('aliasMain')!
   }
@@ -841,6 +850,10 @@ function renderCenterPanel(view: WsView) {
   const team = view.my_team
   if (!team) return `<div class="text-base text-slate-300">${t('no_team_data')}</div>`
 
+  const activeTeam = view.active_team ?? null
+  const myTeamIsPlaying = team.round_active
+  const showAsGuesser = !myTeamIsPlaying
+
   const remain = remainingSeconds(team)
   const timeExpired = remain !== null && remain <= 0
   const timer =
@@ -849,8 +862,9 @@ function renderCenterPanel(view: WsView) {
       : `<div class="text-base text-slate-300">${t('round_remaining', { n: team.round_number })} <span id="roundTimerValue" class="font-semibold text-slate-100">${remain}s</span>${t('time_left_suffix') ? ' ' + t('time_left_suffix') : ''}</div>`
 
   const isCluegiver = view.me.role === 'cluegiver' && team.cluegiver_id === view.me.id
+  const showCluegiverUI = isCluegiver && myTeamIsPlaying
 
-  if (isCluegiver) {
+  if (showCluegiverUI) {
     const currentWord = team.current_word ?? '…'
     const lastWordHint = timeExpired ? `<div class="mt-2 text-base text-amber-200/90">${t('time_up_mark_last')}</div>` : ''
     return `
@@ -900,14 +914,21 @@ function renderCenterPanel(view: WsView) {
   }
 
   const guesserTimerExpiredHint = timeExpired ? `<div class="mt-2 text-base text-amber-200/90">${t('time_up_wait_clue')}</div>` : ''
+  const historyTeam = activeTeam && activeTeam.id !== team.id ? (activeTeam as TeamPrivateView) : team
+  const historyTitle = activeTeam && activeTeam.id !== team.id
+    ? `${t('now_playing')}: ${escapeHtml(activeTeam.name)}`
+    : t('word_history')
+  const waitingHint = showAsGuesser && activeTeam && activeTeam.id !== team.id
+    ? `<div class="mt-1 text-base text-slate-400">${t('waiting_other_team')}</div>`
+    : ''
   return `
-    <div class="text-base text-slate-300">${t('you_guesser')}</div>
-    ${timer}
-    ${guesserTimerExpiredHint}
+    <div class="text-base text-slate-300">${t('you_guesser')}${waitingHint}</div>
+    ${myTeamIsPlaying ? timer : (activeTeam && activeTeam.id !== team.id ? '' : timer)}
+    ${myTeamIsPlaying ? guesserTimerExpiredHint : ''}
     <div class="mt-6 rounded-md bg-white/5 p-7 ring-1 ring-white/10">
-      <div class="text-base text-slate-300">${t('word_history')}</div>
+      <div class="text-base text-slate-300">${historyTitle}</div>
       <div class="mt-3 max-h-[510px] overflow-y-auto pr-1">
-        ${renderRoundHistory(team, true, !team.round_active)}
+        ${renderRoundHistory(historyTeam, true, !team.round_active && historyTeam === team)}
       </div>
     </div>
     <div id="gameError" class="mt-3 hidden rounded-md bg-rose-500/10 px-3 py-2 text-base text-rose-200 ring-1 ring-rose-500/20"></div>
@@ -1017,19 +1038,25 @@ function renderRightPanel(view: WsView) {
     `
       : ''
 
+  const activeTeam = view.active_team ?? null
   const teamsList = view.room.teams ?? []
   const canStartRoundTeamId = view.can_start_round_team_id ?? null
   const fallbackNextIndex = teamsList.length ? (teamsList.reduce((s, t) => s + t.round_number, 0) % teamsList.length) : 0
   const effectiveCanStartId = canStartRoundTeamId ?? teamsList[fallbackNextIndex]?.id ?? null
   const canMyTeamStart = !!(team && effectiveCanStartId && String(team.id) === String(effectiveCanStartId))
+  const otherTeamPlaying = !!(activeTeam && team && activeTeam.id !== team.id)
+  const canPressStartRound = canMyTeamStart && !otherTeamPlaying
+  const startRoundTitle = !canPressStartRound && team && !team.round_active && teamsList.length > 1
+    ? (otherTeamPlaying ? t('another_team_round_active') : t('not_your_turn'))
+    : ''
 
   const controls =
     view.me.role === 'cluegiver' && view.me.team_id
       ? `
       <div class="mt-4 grid gap-3 sm:grid-cols-2">
         <button id="startRound" class="rounded-md bg-indigo-500 px-4 py-3 text-base font-semibold text-white hover:bg-indigo-400 disabled:opacity-50" ${
-          team && !team.round_active && !view.room.game_over && canMyTeamStart ? '' : 'disabled'
-        } title="${!canMyTeamStart && team && !team.round_active && teamsList.length > 1 ? t('not_your_turn') : ''}">
+          team && !team.round_active && !view.room.game_over && canPressStartRound ? '' : 'disabled'
+        } title="${startRoundTitle}">
           ${t('start_round')}
         </button>
         <button id="endRound" class="rounded-md bg-rose-500/90 px-4 py-3 text-base font-semibold text-white hover:bg-rose-400 disabled:opacity-50" ${
@@ -1042,9 +1069,8 @@ function renderRightPanel(view: WsView) {
       : ''
 
   const isCluegiver = view.me.role === 'cluegiver'
-  const activeTeam = view.active_team ?? null
   const myTeamIsPlaying = team?.id != null && activeTeam?.id === team.id
-  const showMyTeamHistory = team && isCluegiver
+  const showMyTeamHistory = team && isCluegiver && myTeamIsPlaying
   const showActiveTeamHistory = activeTeam && !myTeamIsPlaying
 
   const history =
@@ -1220,9 +1246,11 @@ async function connectWs(force: boolean) {
             ? t('cannot_change_word_pack')
             : err.message === 'not_your_turn'
               ? t('not_your_turn')
-              : err.message
+              : err.message === 'another_team_round_active'
+                ? t('another_team_round_active')
+                : err.message
         setError('rightError', msg)
-        if (err.message === 'not_your_turn') showToast(msg)
+        if (err.message === 'not_your_turn' || err.message === 'another_team_round_active') showToast(msg)
       }
     } catch {
       // ignore

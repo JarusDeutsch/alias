@@ -306,6 +306,10 @@ class StateStore:
             raise PermissionError("round_already_active")
         if room.config.mode == GameMode.to_rounds and team.round_number >= room.config.max_rounds:
             raise PermissionError("max_rounds_reached_for_team")
+        # Не начинать раунд, пока у другой команды раунд уже идёт
+        for tid in room.team_ids:
+            if tid != team_id and self.state.teams.get(tid) and self.state.teams[tid].round_active:
+                raise PermissionError("another_team_round_active")
         # Очерёдность: раунд 1 — команда 0, раунд 2 — команда 1, раунд 3 — команда 0, ...
         total_rounds = sum(
             self.state.teams[tid].round_number for tid in room.team_ids if self.state.teams.get(tid)

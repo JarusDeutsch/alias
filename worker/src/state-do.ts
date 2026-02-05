@@ -582,9 +582,13 @@ export class AliasState implements DurableObject {
     if (room.config.mode === 'to_rounds' && team.round_number >= room.config.max_rounds) {
       throw new Error('max_rounds_reached_for_team')
     }
-    // Очерёдность: раунд 1 — команда 0, раунд 2 — команда 1, раунд 3 — команда 0, ...
+    // Не начинать раунд, пока у другой команды раунд уже идёт
     const teamIds = room.team_ids
     if (!Array.isArray(teamIds) || teamIds.length === 0) throw new Error('no_teams')
+    for (const tid of teamIds) {
+      if (tid !== teamId && this.state.teams[tid]?.round_active) throw new Error('another_team_round_active')
+    }
+    // Очерёдность: раунд 1 — команда 0, раунд 2 — команда 1, раунд 3 — команда 0, ...
     const totalRounds = teamIds.reduce((sum, tid) => sum + (this.state.teams[tid]?.round_number ?? 0), 0)
     const nextIndex = totalRounds % teamIds.length
     const teamThatCanStartId = teamIds[nextIndex]
