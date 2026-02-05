@@ -1,4 +1,4 @@
-import { getLocale, type Locale, LOCALES, setLocale, t } from './i18n'
+import { getLocale, type Locale, LOCALES, pluralWords, setLocale, t } from './i18n'
 import { log, exposeToWindow } from './logger'
 import { playCorrect, playDontKnow, playLose, playSkip, playWin } from './sounds'
 
@@ -18,6 +18,21 @@ type GameConfig = {
   max_rounds: number
   word_pack?: WordPack
   word_pack_lang?: WordPackLang
+  /** true = только загадывающий; false = любой игрок в команде может менять настройки */
+  only_cluegiver_can_edit_settings?: boolean
+}
+
+/** Черновик настроек; флаги _*Empty позволяют показывать пустое поле вместо подстановки минимума */
+type SettingsDraft = GameConfig & { _roundSecEmpty?: boolean; _targetEmpty?: boolean }
+
+function toEffectiveConfig(draft: SettingsDraft, base: GameConfig): GameConfig {
+  const mode = draft.mode
+  return {
+    ...draft,
+    round_seconds: draft._roundSecEmpty ? base.round_seconds : draft.round_seconds,
+    target_words: mode === 'to_words' && draft._targetEmpty ? base.target_words : draft.target_words,
+    max_rounds: mode === 'to_rounds' && draft._targetEmpty ? base.max_rounds : draft.max_rounds,
+  }
 }
 
 type WordEvent = {
@@ -148,7 +163,7 @@ const store = {
   connecting: false,
   nowMs: Date.now(),
   pendingWordOutcome: false,
-  settingsDraft: null as GameConfig | null,
+  settingsDraft: null as SettingsDraft | null,
   settingsDirty: false,
   settingsOpen: false,
   spectatorsOpen: false,
@@ -200,7 +215,7 @@ function escapeHtml(s: string) {
 }
 
 function configKey(c: GameConfig): string {
-  return `${c.mode}|${c.round_seconds}|${c.target_words}|${c.max_rounds}|${c.word_pack ?? 'medium'}|${c.word_pack_lang ?? 'ru'}`
+  return `${c.mode}|${c.round_seconds}|${c.target_words}|${c.max_rounds}|${c.word_pack ?? 'medium'}|${c.word_pack_lang ?? 'ru'}|${c.only_cluegiver_can_edit_settings !== false}`
 }
 
 function parseRoomCodeFromUrl(): string | null {
@@ -288,7 +303,9 @@ async function copyToClipboard(text: string): Promise<boolean> {
 
 function canEditSettings(view: WsView | null): boolean {
   if (!view) return false
-  return !!view.me.team_id && !view.room.game_over
+  if (!view.me.team_id || view.room.game_over) return false
+  const onlyCluegiver = view.room.config.only_cluegiver_can_edit_settings !== false
+  return !onlyCluegiver || view.me.role === 'cluegiver'
 }
 
 function remainingSecondsFromEndAt(roundEndsAt: string | null | undefined): number | null {
@@ -711,7 +728,7 @@ function renderTopBar(view: WsView) {
         </div>
         <div class="ml-auto shrink-0 text-right">
           <div class="text-base font-semibold ${winner ? 'text-emerald-200' : 'text-slate-100'}">${teamRow.score}</div>
-          <div class="text-base text-slate-400">${teamRow.total_correct} ${t('words_count')}</div>
+          <div class="text-base text-slate-400">${teamRow.total_correct} ${pluralWords(teamRow.total_correct)}</div>
         </div>`
       if (gameStarted) {
         return `<div class="flex items-start gap-2 rounded-md bg-white/5 px-2.5 py-1.5 ring-1 ring-white/10">${base}</div>`
@@ -1084,15 +1101,20 @@ function renderRightPanel(view: WsView) {
             </select>
         </label>
 
+        <label class="flex cursor-pointer items-center gap-2">
+          <input id="cfgAnyoneEdit" type="checkbox" class="h-4 w-4 rounded border-white/20 bg-white/5 text-indigo-500 focus:ring-2 focus:ring-indigo-500/60" ${cfg.only_cluegiver_can_edit_settings === false ? 'checked' : ''} ${canSettings ? '' : 'disabled'} />
+          <span class="text-base text-slate-300">${t('settings_allow_anyone_edit')}</span>
+        </label>
+
         <div class="grid gap-3 sm:grid-cols-2">
           <label class="grid gap-1">
             <span class="text-base text-slate-300">${t('round_seconds')}</span>
-            <input id="cfgRoundSec" type="number" min="${CONFIG_ROUND_SEC_MIN}" max="${CONFIG_ROUND_SEC_MAX}" value="${cfg.round_seconds}"
+            <input id="cfgRoundSec" type="number" min="${CONFIG_ROUND_SEC_MIN}" max="${CONFIG_ROUND_SEC_MAX}" value="${(cfg as SettingsDraft)._roundSecEmpty ? '' : cfg.round_seconds}"
               class="rounded-md bg-white/5 px-3 py-2 text-base ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500/60" ${canSettings ? '' : 'disabled'} />
           </label>
           <label class="grid gap-1">
             <span id="cfgTargetLabel" class="text-base text-slate-300">${cfg.mode === 'to_words' ? t('words_to_win') : t('rounds_to_win')}</span>
-            <input id="cfgTarget" type="number" min="${cfg.mode === 'to_words' ? CONFIG_TARGET_WORDS_MIN : CONFIG_MAX_ROUNDS_MIN}" max="${cfg.mode === 'to_words' ? CONFIG_TARGET_WORDS_MAX : CONFIG_MAX_ROUNDS_MAX}" value="${cfg.mode === 'to_words' ? cfg.target_words : cfg.max_rounds}"
+            <input id="cfgTarget" type="number" min="${cfg.mode === 'to_words' ? CONFIG_TARGET_WORDS_MIN : CONFIG_MAX_ROUNDS_MIN}" max="${cfg.mode === 'to_words' ? CONFIG_TARGET_WORDS_MAX : CONFIG_MAX_ROUNDS_MAX}" value="${(cfg as SettingsDraft)._targetEmpty ? '' : (cfg.mode === 'to_words' ? cfg.target_words : cfg.max_rounds)}"
               class="rounded-md bg-white/5 px-3 py-2 text-base ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500/60" ${canSettings ? '' : 'disabled'} />
             </label>
           </div>
@@ -1280,7 +1302,7 @@ async function connectWs(force: boolean) {
           store.teamCode = ''
           save()
         }
-        if (store.settingsDraft && configKey(store.settingsDraft) === configKey(data.view.room.config)) store.settingsDirty = false
+        if (store.settingsDraft && configKey(toEffectiveConfig(store.settingsDraft, data.view.room.config)) === configKey(data.view.room.config)) store.settingsDirty = false
         if (!store.settingsDirty) store.settingsDraft = data.view.room.config
         if (!prevGameOver && data.view.room.game_over && data.view.room.winner_team_id != null) {
           const myTeamId = data.view.me.team_id
@@ -1301,11 +1323,13 @@ async function connectWs(force: boolean) {
         const msg =
           err.message === 'cannot_change_word_pack_after_game_started'
             ? t('cannot_change_word_pack')
-            : err.message === 'not_your_turn'
-              ? t('not_your_turn')
-              : err.message === 'another_team_round_active'
-                ? t('another_team_round_active')
-                : err.message
+            : err.message === 'cannot_change_win_condition_after_game_started'
+              ? t('cannot_change_win_condition')
+              : err.message === 'not_your_turn'
+                ? t('not_your_turn')
+                : err.message === 'another_team_round_active'
+                  ? t('another_team_round_active')
+                  : err.message
         setError('rightError', msg)
         if (err.message === 'not_your_turn' || err.message === 'another_team_round_active') showToast(msg)
       }
@@ -1350,26 +1374,35 @@ function updateDraftFromUi() {
   const targetEl = document.getElementById('cfgTarget') as HTMLInputElement | null
   const wordPackEl = document.getElementById('cfgWordPack') as HTMLSelectElement | null
   const wordPackLangEl = document.getElementById('cfgWordPackLang') as HTMLSelectElement | null
+  const anyoneEditEl = document.getElementById('cfgAnyoneEdit') as HTMLInputElement | null
   if (!modeEl || !roundSecEl || !targetEl || !store.view) return
 
   const base = store.settingsDraft ?? store.view.room.config
   const mode = modeEl.value as GameMode
-  const round_seconds = Math.max(CONFIG_ROUND_SEC_MIN, Math.min(CONFIG_ROUND_SEC_MAX, Number(roundSecEl.value) || base.round_seconds))
-  const targetRaw = Number(targetEl.value) || (mode === 'to_words' ? base.target_words : base.max_rounds)
+  const roundSecEmpty = roundSecEl.value.trim() === ''
+  const round_seconds = roundSecEmpty ? base.round_seconds : Math.max(CONFIG_ROUND_SEC_MIN, Math.min(CONFIG_ROUND_SEC_MAX, Number(roundSecEl.value) || base.round_seconds))
+  const targetEmpty = targetEl.value.trim() === ''
+  const targetRaw = targetEmpty ? (mode === 'to_words' ? base.target_words : base.max_rounds) : (Number(targetEl.value) || (mode === 'to_words' ? base.target_words : base.max_rounds))
   const targetWords = mode === 'to_words' ? Math.max(CONFIG_TARGET_WORDS_MIN, Math.min(CONFIG_TARGET_WORDS_MAX, targetRaw)) : base.target_words
   const maxRounds = mode === 'to_rounds' ? Math.max(CONFIG_MAX_ROUNDS_MIN, Math.min(CONFIG_MAX_ROUNDS_MAX, targetRaw)) : base.max_rounds
   const word_pack = (wordPackEl?.value as WordPack) ?? (base.word_pack ?? 'medium')
   const word_pack_lang = (wordPackLangEl?.value as WordPackLang) ?? (base.word_pack_lang ?? 'ru')
+  const only_cluegiver_can_edit_settings = anyoneEditEl ? !anyoneEditEl.checked : (base.only_cluegiver_can_edit_settings !== false)
 
-  store.settingsDraft = {
+  const draft: SettingsDraft = {
     mode,
     round_seconds,
     target_words: targetWords,
     max_rounds: maxRounds,
     word_pack,
     word_pack_lang,
+    only_cluegiver_can_edit_settings,
+    _roundSecEmpty: roundSecEmpty,
+    _targetEmpty: targetEmpty,
   }
-  store.settingsDirty = store.view ? configKey(store.settingsDraft) !== configKey(store.view.room.config) : false
+  store.settingsDraft = draft
+  const effective = toEffectiveConfig(draft, store.view.room.config)
+  store.settingsDirty = store.view ? configKey(effective) !== configKey(store.view.room.config) : false
   updateTargetLabel(mode)
   render()
 }
@@ -1377,10 +1410,11 @@ function updateDraftFromUi() {
 function applyDraftSettings() {
   if (!store.view || !store.settingsDraft) return
   if (!canEditSettings(store.view)) return
-  store.settingsDirty = configKey(store.settingsDraft) !== configKey(store.view.room.config)
+  const effective = toEffectiveConfig(store.settingsDraft, store.view.room.config)
+  store.settingsDirty = configKey(effective) !== configKey(store.view.room.config)
   if (!store.settingsDirty) return
-  log('action', 'применение настроек', { config: store.settingsDraft })
-  sendWs({ type: 'update_settings', config: store.settingsDraft })
+  log('action', 'применение настроек', { config: effective })
+  sendWs({ type: 'update_settings', config: effective })
   showToast(t('settings_applied'))
 }
 
@@ -1685,7 +1719,9 @@ function wireHandlers() {
       showToast(
         errMsg === 'cannot_change_word_pack_after_game_started'
           ? t('cannot_change_word_pack')
-          : apiErrorMessage(errMsg),
+          : errMsg === 'cannot_change_win_condition_after_game_started'
+            ? t('cannot_change_win_condition')
+            : apiErrorMessage(errMsg),
       )
     }
   })
@@ -1756,6 +1792,7 @@ function wireHandlers() {
   const targetEl = document.getElementById('cfgTarget') as HTMLInputElement | null
   const wordPackEl = document.getElementById('cfgWordPack') as HTMLSelectElement | null
   const wordPackLangEl = document.getElementById('cfgWordPackLang') as HTMLSelectElement | null
+  const anyoneEditEl = document.getElementById('cfgAnyoneEdit') as HTMLInputElement | null
 
   function syncDraftAndApply() {
     updateDraftFromUi()
@@ -1765,6 +1802,7 @@ function wireHandlers() {
   modeEl?.addEventListener('change', syncDraftAndApply)
   wordPackEl?.addEventListener('change', syncDraftAndApply)
   wordPackLangEl?.addEventListener('change', syncDraftAndApply)
+  anyoneEditEl?.addEventListener('change', syncDraftAndApply)
   roundSecEl?.addEventListener('input', updateDraftFromUi)
   targetEl?.addEventListener('input', updateDraftFromUi)
   roundSecEl?.addEventListener('blur', syncDraftAndApply)

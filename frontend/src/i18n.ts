@@ -132,6 +132,7 @@ const translations: Record<Locale, Messages> = {
     // Right panel
     randomize_teams: 'Рандомно распределить игроков по командам и ролям',
     settings: 'Настройки',
+    settings_allow_anyone_edit: 'Позволить менять настройки всем игрокам в команде',
     word_pack_label: 'Пак слов',
     win_type: 'Тип победы',
     win_by_words: 'По количеству угаданных слов',
@@ -162,6 +163,7 @@ const translations: Record<Locale, Messages> = {
     pack_uploaded_toast: 'Пак «{{name}}» загружен',
     player_left: '{{name}} покинул комнату',
     cannot_change_word_pack: 'Пак слов нельзя менять после начала первого раунда до конца игры',
+    cannot_change_win_condition: 'Условие победы нельзя менять после начала первого раунда',
     // Mobile
     tab_team: 'Команда',
     tab_controls: 'Управление',
@@ -277,6 +279,7 @@ const translations: Record<Locale, Messages> = {
     round: 'Раунд',
     randomize_teams: 'Випадково розподілити гравців по командах та ролях',
     settings: 'Налаштування',
+    settings_allow_anyone_edit: 'Дозволити змінювати налаштування всім гравцям у команді',
     word_pack_label: 'Пак слів',
     win_type: 'Тип перемоги',
     win_by_words: 'За кількістю вгаданих слів',
@@ -306,6 +309,7 @@ const translations: Record<Locale, Messages> = {
     pack_uploaded_toast: 'Пак «{{name}}» завантажено',
     player_left: '{{name}} покинув кімнату',
     cannot_change_word_pack: 'Пак слів не можна змінювати після початку першого раунду до кінця гри',
+    cannot_change_win_condition: 'Умову перемоги не можна змінювати після початку першого раунду',
     tab_team: 'Команда',
     tab_controls: 'Керування',
     team_default_name: 'Команда {{n}}',
@@ -420,6 +424,7 @@ const translations: Record<Locale, Messages> = {
     round: 'Round',
     randomize_teams: 'Randomize players across teams and roles',
     settings: 'Settings',
+    settings_allow_anyone_edit: 'Allow any team player to change settings',
     word_pack_label: 'Word pack',
     win_type: 'Win condition',
     win_by_words: 'By number of words guessed',
@@ -449,6 +454,7 @@ const translations: Record<Locale, Messages> = {
     pack_uploaded_toast: 'Pack "{{name}}" uploaded',
     player_left: '{{name}} left the room',
     cannot_change_word_pack: 'Word pack cannot be changed after the first round has started until the game ends',
+    cannot_change_win_condition: 'Win condition cannot be changed after the first round has started',
     tab_team: 'Team',
     tab_controls: 'Controls',
     team_default_name: 'Team {{n}}',
@@ -476,6 +482,24 @@ if (typeof document !== 'undefined' && document.documentElement) {
 
 export function getLocale(): Locale {
   return currentLocale
+}
+
+/** Склонение «слово/слова/слов» по числу n для текущей локали */
+export function pluralWords(n: number): string {
+  const locale = currentLocale
+  const mod10 = n % 10
+  const mod100 = n % 100
+  if (locale === 'ru') {
+    if (mod10 === 1 && mod100 !== 11) return 'слово'
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return 'слова'
+    return 'слов'
+  }
+  if (locale === 'uk') {
+    if (mod10 === 1 && mod100 !== 11) return 'слово'
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return 'слова'
+    return 'слів'
+  }
+  return n === 1 ? 'word' : 'words'
 }
 
 export function setLocale(locale: Locale) {

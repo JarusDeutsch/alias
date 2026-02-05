@@ -13,6 +13,8 @@ export interface GameConfig {
   max_rounds: number
   word_pack?: WordPack
   word_pack_lang?: WordPackLang
+  /** true = только загадывающий может менять настройки; false = любой игрок в команде */
+  only_cluegiver_can_edit_settings?: boolean
 }
 
 export interface WordEvent {

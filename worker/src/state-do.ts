@@ -9,6 +9,7 @@ const DEFAULT_CONFIG: GameConfig = {
   max_rounds: 10,
   word_pack: 'medium',
   word_pack_lang: 'ru',
+  only_cluegiver_can_edit_settings: true,
 }
 
 function nowISO(): string {
@@ -553,21 +554,32 @@ export class AliasState implements DurableObject {
 
   private ensureCanEditRoom(roomId: string, actorPlayerId: string): void {
     const actor = this.state.players[actorPlayerId]
-    if (actor.role !== 'cluegiver' || !actor.team_id) throw new Error('only_cluegiver')
     const room = this.state.rooms[roomId]
     if (room.game_over) throw new Error('game_over')
+    if (!actor.team_id) throw new Error('only_cluegiver')
+    const onlyCluegiver = room.config.only_cluegiver_can_edit_settings !== false
+    if (onlyCluegiver && actor.role !== 'cluegiver') throw new Error('only_cluegiver')
+  }
+
+  private ensureCanChangeWinCondition(roomId: string): void {
+    const room = this.state.rooms[roomId]
+    if (room.game_over) return
     for (const tid of room.team_ids) {
-      if (this.state.teams[tid]?.round_active) throw new Error('cannot_change_settings_during_round')
+      const t = this.state.teams[tid]
+      if (t?.round_number > 0) throw new Error('cannot_change_win_condition_after_game_started')
     }
   }
 
   private updateSettings(roomId: string, actorPlayerId: string, config: GameConfig): void {
     this.ensureCanEditRoom(roomId, actorPlayerId)
     const room = this.state.rooms[roomId]
-    room.config.mode = config.mode ?? room.config.mode
     room.config.round_seconds = Math.max(10, Math.min(Number(config.round_seconds) || 60, 600))
     room.config.target_words = Math.max(1, Math.min(Number(config.target_words) || 20, 500))
     room.config.max_rounds = Math.max(1, Math.min(Number(config.max_rounds) || 10, 100))
+    if (config.mode != null && config.mode !== room.config.mode) {
+      this.ensureCanChangeWinCondition(roomId)
+    }
+    room.config.mode = config.mode ?? room.config.mode
     if (config.word_pack != null) {
       this.ensureCanChangeWordPack(roomId)
       room.config.word_pack = config.word_pack
@@ -577,6 +589,9 @@ export class AliasState implements DurableObject {
       this.ensureCanChangeWordPack(roomId)
       room.config.word_pack_lang = config.word_pack_lang
       if (!this.roomCustomWords.has(roomId)) this.replaceRoomDecks(roomId)
+    }
+    if (config.only_cluegiver_can_edit_settings !== undefined) {
+      room.config.only_cluegiver_can_edit_settings = config.only_cluegiver_can_edit_settings
     }
   }
 

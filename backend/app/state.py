@@ -264,24 +264,37 @@ class StateStore:
         return self.state.rooms[team.room_id]
 
     def _ensure_can_edit_room(self, room: Room, actor_player_id: UUID) -> None:
+        """Право менять настройки: игра не завершена, игрок в команде; при only_cluegiver_can_edit_settings — только загадывающий."""
         actor = self.state.players[actor_player_id]
-        if actor.role != PlayerRole.cluegiver or not actor.team_id:
-            raise PermissionError("only_cluegiver")
         if room.game_over:
             raise PermissionError("game_over")
-        # запрещаем менять настройки, если у кого-то идёт раунд
+        if not actor.team_id:
+            raise PermissionError("only_cluegiver")  # в команде должен быть
+        only_cluegiver = getattr(room.config, "only_cluegiver_can_edit_settings", True)
+        if only_cluegiver and actor.role != PlayerRole.cluegiver:
+            raise PermissionError("only_cluegiver")
+
+    def _ensure_can_change_win_condition(self, room_id: UUID) -> None:
+        """Условие победы (режим игры) нельзя менять после начала первого раунда."""
+        room = self.state.rooms[room_id]
+        if room.game_over:
+            return
         for tid in room.team_ids:
-            t = self.state.teams[tid]
-            if t.round_active:
-                raise PermissionError("cannot_change_settings_during_round")
+            t = self.state.teams.get(tid)
+            if t and t.round_number > 0:
+                raise PermissionError("cannot_change_win_condition_after_game_started")
 
     def update_settings(self, room_id: UUID, actor_player_id: UUID, config: GameConfig) -> None:
         room = self.state.rooms[room_id]
         self._ensure_can_edit_room(room, actor_player_id)
-        room.config.mode = config.mode
+        # Время раунда и кол-во слов/раундов для победы можно менять в любой момент (кроме game_over).
         room.config.round_seconds = max(10, min(int(config.round_seconds), 600))
         room.config.target_words = max(1, min(int(config.target_words), 500))
         room.config.max_rounds = max(1, min(int(config.max_rounds), 100))
+        # Режим победы — только до начала первого раунда.
+        if config.mode != room.config.mode:
+            self._ensure_can_change_win_condition(room_id)
+        room.config.mode = config.mode
         if hasattr(config, "word_pack") and config.word_pack is not None:
             self._ensure_can_change_word_pack(room_id)
             room.config.word_pack = config.word_pack
@@ -292,6 +305,8 @@ class StateStore:
             room.config.word_pack_lang = config.word_pack_lang
             if room_id not in self.room_custom_words:
                 self._replace_room_decks(room_id)
+        if hasattr(config, "only_cluegiver_can_edit_settings"):
+            room.config.only_cluegiver_can_edit_settings = bool(config.only_cluegiver_can_edit_settings)
 
     def _require_cluegiver_of_team(self, team: Team, actor_player_id: UUID) -> None:
         if team.cluegiver_id != actor_player_id:

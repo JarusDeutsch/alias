@@ -44,6 +44,9 @@ class GameConfig(BaseModel):
     max_rounds: int = Field(default=10, ge=1, le=100, description="раундов до победы (режим to_rounds)")
     word_pack: WordPack = WordPack.medium
     word_pack_lang: WordPackLang = WordPackLang.ru
+    only_cluegiver_can_edit_settings: bool = Field(
+        default=True, description="если True — настройки меняет только загадывающий; если False — любой игрок в команде"
+    )
 
 
 class WordEvent(BaseModel):
